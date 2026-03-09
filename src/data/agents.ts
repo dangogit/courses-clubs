@@ -1,0 +1,58 @@
+import { MessageCircle, BarChart3, Mail, FileText, ShoppingCart, Zap } from "lucide-react";
+
+export const agents = [
+  {
+    id: "customer-service",
+    name: "סוכן שירות לקוחות",
+    description: "מענה אוטומטי חכם לפניות לקוחות בעברית ובאנגלית, כולל FAQ, מעקב הזמנות ופתיחת פניות",
+    icon: MessageCircle,
+    category: "שירות",
+    gradient: "from-[hsl(195,100%,35%)] to-[hsl(210,90%,45%)]",
+    externalUrl: "",
+  },
+  {
+    id: "digital-marketing",
+    name: "סוכן שיווק דיגיטלי",
+    description: "יוצר תוכן שיווקי, קופי לרשתות חברתיות, כותרות ותיאורים לקמפיינים ממומנים",
+    icon: BarChart3,
+    category: "שיווק",
+    gradient: "from-[hsl(250,70%,45%)] to-[hsl(280,60%,50%)]",
+    externalUrl: "",
+  },
+  {
+    id: "smart-email",
+    name: "סוכן מיילים חכם",
+    description: "כותב ומשפר מיילים עסקיים, מסדרות שיווקיות ועד תקשורת אישית עם לקוחות",
+    icon: Mail,
+    category: "תקשורת",
+    gradient: "from-[hsl(160,65%,35%)] to-[hsl(195,80%,40%)]",
+    externalUrl: "",
+  },
+  {
+    id: "data-analysis",
+    name: "סוכן ניתוח נתונים",
+    description: "מנתח קבצי אקסל ו-CSV, יוצר גרפים ותובנות עסקיות מתוך הנתונים שלכם",
+    icon: FileText,
+    category: "ניתוח",
+    gradient: "from-[hsl(340,70%,45%)] to-[hsl(20,80%,50%)]",
+    externalUrl: "",
+  },
+  {
+    id: "sales",
+    name: "סוכן מכירות",
+    description: "מסייע בתהליכי מכירה — מהצעת מחיר, דרך Follow Up ועד סגירת עסקה",
+    icon: ShoppingCart,
+    category: "מכירות",
+    gradient: "from-[hsl(30,80%,45%)] to-[hsl(45,90%,50%)]",
+    externalUrl: "",
+  },
+  {
+    id: "automation",
+    name: "סוכן אוטומציה",
+    description: "מחבר בין כלים ומערכות שונות, בונה תהליכי עבודה אוטומטיים ללא קוד",
+    icon: Zap,
+    category: "אוטומציה",
+    gradient: "from-[hsl(195,90%,40%)] to-[hsl(250,70%,50%)]",
+    externalUrl: "",
+  },
+];
