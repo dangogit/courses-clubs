@@ -28,6 +28,12 @@ Bug fixes and new features flow from main repo to all forks.
 - Session persistence
 - User profile creation on first sign-in
 
+**✅ Verification — must pass before Phase 2:**
+- [ ] Google OAuth sign-in completes and creates a row in `profiles`
+- [ ] Magic Link email arrives and signs user in
+- [ ] Unauthenticated visit to any protected route redirects to login
+- [ ] Session persists across page reload
+
 ---
 
 ## Phase 2 — Learning Platform + Community + Events (5.5 days)
@@ -49,6 +55,15 @@ Bug fixes and new features flow from main repo to all forks.
 - Email reminders (via Resend)
 - Calendar export (.ics)
 
+**✅ Verification — must pass before Phase 3:**
+- [ ] Course catalog loads from Supabase (not mock data)
+- [ ] Lesson progress persists to DB and survives page reload
+- [ ] Bunny.net video plays in lesson player and recording player
+- [ ] Post created in feed appears for another user without page refresh
+- [ ] Group feed is scoped to group members only
+- [ ] RSVP to event creates a row in `event_rsvps`
+- [ ] Event reminder email fires (manual trigger via Supabase Edge Function invoke)
+
 ---
 
 ## Phase 3 — Gamification + Payments (8 days)
@@ -67,6 +82,14 @@ Bug fixes and new features flow from main repo to all forks.
 - Cancellation popup with discount offer (retention flow)
 - Admin: create/edit subscription products with custom pricing
 - Coupon codes + invite links with embedded discounts
+
+**✅ Verification — must pass before Phase 4:**
+- [ ] Completing a lesson awards XP and updates `xp_events` table
+- [ ] Level-up triggers celebration animation and updates `profiles.level_id`
+- [ ] Referral link signup credits referrer with XP
+- [ ] CardCom test card completes checkout and creates `subscriptions` row with status `trialing`
+- [ ] Failed payment (use CardCom test decline card) transitions subscription to `past_due` and blocks access
+- [ ] Cancellation flow presents discount offer before confirming cancel
 
 ---
 
@@ -89,10 +112,22 @@ Bug fixes and new features flow from main repo to all forks.
 - System prompt: inject club course catalog + tone guidelines
 - Conversation history (session-scoped)
 
+**Email System (1 day)**
+- Transactional emails via Resend (event reminders, payment receipts, failed payment alerts, magic link)
+- Campaign webhook integration (see [spec.md](spec.md#email) — details TBD with client)
+
 **Search (1.5 days)**
 - Global search wired to Supabase full-text search
-- Scope: courses, recordings, events, posts, groups, agents
+- Scope: courses, recordings, events, posts, users, groups, agents
 - Autocomplete dropdown in header (already built, needs backend)
+
+**✅ Verification — must pass before Phase 5:**
+- [ ] Admin dashboard stats reflect live DB counts (not mocked)
+- [ ] Inline course edit saves to Supabase
+- [ ] Reply notification appears in bell within 5 seconds (Supabase Realtime)
+- [ ] Email notification arrives for reply (Resend)
+- [ ] AI Mentor responds using club course catalog context
+- [ ] Global search returns results from courses, recordings, events, posts, users, and groups
 
 ---
 
@@ -115,6 +150,14 @@ Migrate existing Brainers users and content from WordPress (see [data-migration.
 - AI Agents (20)
 - Activity feed + reactions (1,313 posts, 9,511 reactions)
 - Referrals + notifications (recent/unread only)
+
+**✅ Verification — must pass before launch:**
+- [ ] Spot-check 10 random users: profile, subscription status, XP, and lesson progress match WordPress source
+- [ ] All 108 recordings appear in the recording library
+- [ ] All 20 AI agents appear in the gallery
+- [ ] 6 BuddyBoss groups migrated with correct member counts (±5%)
+- [ ] CardCom tokens migrated — test charge succeeds for a migrated token
+- [ ] No orphaned foreign keys (run `SELECT` checks on all junction tables)
 
 ---
 

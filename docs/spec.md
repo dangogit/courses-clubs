@@ -93,6 +93,24 @@
 
 ---
 
+## Email
+
+**Transactional emails** (Resend):
+- Magic link sign-in
+- Event reminders (timing TBD — see Open Questions)
+- Payment receipt, failed payment alert, dunning emails
+- Mention and reply notifications (if user has email notifications enabled)
+
+**Campaign webhook integration** *(details TBD — confirm with client):*
+- Outgoing webhook that fires on key lifecycle events: user signup, subscription start, subscription cancel, level-up
+- Pushes contact data into an external marketing email tool (provider TBD — e.g. Mailchimp, ActiveCampaign, or similar)
+- Open questions to resolve with client:
+  1. Which marketing email provider?
+  2. Which events trigger the webhook?
+  3. What contact fields are included (email, name, plan, XP level)?
+
+---
+
 ## Open Questions
 
 These need answers before backend implementation:

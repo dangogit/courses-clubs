@@ -1,7 +1,8 @@
 'use client';
 
+import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowRight, Clock, Play, Plus, Tag } from "lucide-react";
+import { ArrowRight, Clock, Play, Plus, Tag, Maximize2, Minimize2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { videoTutorials } from "@/data/tutorials";
@@ -27,11 +28,12 @@ export default function VideoTutorialDetail() {
 
   const { isWatched, toggleWatched } = useWatchedProgress("tutorial");
   const watched = isWatched(tutorial.id);
+  const [theaterMode, setTheaterMode] = useState(false);
 
   const popular = videoTutorials.filter((v) => v.id !== tutorial.id).slice(0, 3);
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8" dir="rtl">
+    <div className={theaterMode ? "w-full px-4 py-8" : "max-w-3xl mx-auto px-4 py-8"} dir="rtl">
       {/* Back */}
       <button
         onClick={() => router.push("/tutorials")}
@@ -58,7 +60,8 @@ export default function VideoTutorialDetail() {
       <p className="text-base leading-relaxed text-muted-foreground mb-8">{tutorial.description}</p>
 
       {/* Video Player */}
-      <div className="relative rounded-2xl overflow-hidden bg-muted aspect-video shadow-md group cursor-pointer mb-5">
+      <div className={theaterMode ? "bg-black/90 -mx-4 px-0 mb-5" : ""}>
+      <div className={`relative ${theaterMode ? "rounded-none" : "rounded-2xl mb-5"} overflow-hidden bg-muted aspect-video shadow-md group cursor-pointer`}>
         <img
           src={tutorial.thumbnail}
           alt={tutorial.title}
@@ -74,12 +77,24 @@ export default function VideoTutorialDetail() {
           {tutorial.duration}
         </div>
       </div>
+      </div>
 
-      {/* Watched Button */}
-      <WatchedButton
-        watched={watched}
-        onToggle={() => toggleWatched(tutorial.id)}
-      />
+      {/* Watched Button + Theater toggle */}
+      <div className="flex items-center gap-2 mb-5">
+        <WatchedButton
+          watched={watched}
+          onToggle={() => toggleWatched(tutorial.id)}
+        />
+        <button
+          onClick={() => setTheaterMode(t => !t)}
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer ${
+            theaterMode ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-primary hover:bg-primary/10"
+          }`}
+          title={theaterMode ? "יציאה ממצב תיאטרון" : "מצב תיאטרון"}
+        >
+          {theaterMode ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+        </button>
+      </div>
 
       {/* What you'll learn */}
       <div className="mb-8">

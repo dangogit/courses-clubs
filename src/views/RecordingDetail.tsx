@@ -14,6 +14,8 @@ import {
   CheckCircle2,
   Link as LinkIcon,
   ExternalLink,
+  Maximize2,
+  Minimize2,
 } from "lucide-react";
 import { useWatchedProgress } from "@/hooks/useWatchedProgress";
 import WatchedButton from "@/components/WatchedButton";
@@ -70,6 +72,7 @@ export default function RecordingDetailPage() {
   const remaining = totalCount - (watchedCount + (watched ? 0 : 1));
 
   const [bookmarked, setBookmarked] = useState(false);
+  const [theaterMode, setTheaterMode] = useState(false);
 
   const prevRecording = recordingIndex > 0 ? recordingIndex - 1 : null;
   const nextRecording = recordingIndex < initialRecordings.length - 1 ? recordingIndex + 1 : null;
@@ -84,7 +87,7 @@ export default function RecordingDetailPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className={theaterMode ? "w-full" : "max-w-4xl mx-auto"}>
       {/* Breadcrumb */}
       <nav className="flex items-center gap-1.5 text-xs text-muted-foreground mb-4">
         <Link href="/recordings" className="hover:text-primary transition-colors font-medium">
@@ -148,8 +151,9 @@ export default function RecordingDetailPage() {
       </div>
 
       {/* Video Player */}
+      <div className={theaterMode ? "bg-black/90 -mx-3 sm:-mx-4 px-0 mb-4" : ""}>
       <div
-        className={`w-full aspect-video rounded-2xl bg-gradient-to-br ${recording.gradient} relative flex items-center justify-center overflow-hidden mb-4 group cursor-pointer shadow-lg`}
+        className={`w-full aspect-video ${theaterMode ? "rounded-none" : "rounded-2xl mb-4"} bg-gradient-to-br ${recording.gradient} relative flex items-center justify-center overflow-hidden group cursor-pointer shadow-lg`}
       >
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_75%,hsla(0,0%,100%,0.12),transparent_50%)]" />
         <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
@@ -174,6 +178,7 @@ export default function RecordingDetailPage() {
             לחצו לצפייה
           </span>
         </div>
+      </div>
       </div>
 
       {/* Action bar */}
@@ -201,6 +206,15 @@ export default function RecordingDetailPage() {
           >
             <Share2 className="h-4 w-4" />
             שתף
+          </button>
+          <button
+            onClick={() => setTheaterMode(t => !t)}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer ${
+              theaterMode ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-primary hover:bg-primary/10"
+            }`}
+            title={theaterMode ? "יציאה ממצב תיאטרון" : "מצב תיאטרון"}
+          >
+            {theaterMode ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
           </button>
         </div>
       </div>

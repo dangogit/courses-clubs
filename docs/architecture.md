@@ -208,3 +208,160 @@ Root layout sets `<html lang="he" dir="rtl">`. Heebo (body) and Rubik (headings)
 | **Supabase DB** | All platform data (replaces `src/data/`) |
 | **Bunny.net** | Video streaming (courses, recordings, tutorials) |
 | **Cardcom** | Israeli payment processor — tokenized recurring billing |
+
+---
+
+## Supabase Architecture — Multi-Club Setup
+
+### One project per club, shared migrations
+
+Each club (Brainers, Next Level, future clubs) has its own isolated Supabase project with separate database, auth, and storage. The upstream repo contains all migration files. Setting up a new club's DB is:
+
+```bash
+supabase link --project-ref <new-club-project-ref>
+supabase db push    # applies all migrations from supabase/migrations/
+supabase db seed    # seeds levels, default config
+```
+
+All club credentials live in `.env.local` (never committed). See `.env.local.example`.
+
+---
+
+### Directory structure
+
+```
+supabase/
+├── config.toml                    # Local dev config (ports, etc.)
+├── seed.sql                       # Static data: 15 levels, default XP config
+├── migrations/
+│   ├── 20240101000000_phase1_auth.sql         # profiles table + RLS + trigger
+│   ├── 20240101000001_phase2_learning.sql     # courses, lessons, lesson_progress + RLS
+│   ├── 20240101000002_phase2_recordings.sql   # recordings + RLS
+│   ├── 20240101000003_phase2_community.sql    # groups, posts, comments, reactions + RLS
+│   ├── 20240101000004_phase2_events.sql       # events, event_rsvps + RLS
+│   ├── 20240101000005_phase3_gamification.sql # levels, xp_events + triggers + RLS
+│   ├── 20240101000006_phase3_payments.sql     # subscriptions, cardcom_tokens + RLS
+│   ├── 20240101000007_phase4_notifications.sql# notifications + RLS
+│   ├── 20240101000008_phase4_messages.sql     # message_threads, messages + RLS
+│   ├── 20240101000009_phase4_search.sql       # full-text search indexes + search RPC
+│   └── 20240101000010_rpcs.sql               # all stored functions / RPCs
+└── functions/                     # Supabase Edge Functions
+    ├── process-cardcom-webhook/   # Payment events (uses service role)
+    ├── send-event-reminder/       # Cron-triggered via pg_cron
+    ├── send-notification-email/   # Resend transactional emails
+    ├── ai-mentor-chat/            # AI completion (Claude or OpenAI)
+    └── campaign-webhook/          # Outgoing to marketing email tool (TBD)
+```
+
+**Golden rule: never edit an existing migration file.** Once applied to any environment, it's immutable. All changes go in a new migration.
+
+---
+
+### What belongs in each migration file
+
+Each migration is **self-contained by feature**: table DDL + its RLS policies + its triggers. This keeps related logic together and avoids ordering issues.
+
+```sql
+-- Example: 20240101000003_phase2_community.sql
+
+-- 1. Tables
+CREATE TABLE groups (...);
+CREATE TABLE posts (...);
+CREATE TABLE post_comments (...);
+CREATE TABLE post_reactions (...);
+
+-- 2. Indexes
+CREATE INDEX ON posts (group_id, created_at DESC);
+CREATE INDEX ON post_comments (post_id, created_at);
+
+-- 3. RLS — enable + policies
+ALTER TABLE posts ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "posts_select" ON posts FOR SELECT
+  TO authenticated USING (true);
+
+CREATE POLICY "posts_insert" ON posts FOR INSERT
+  TO authenticated WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "posts_delete" ON posts FOR DELETE
+  TO authenticated USING (
+    auth.uid() = user_id
+    OR EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role IN ('admin', 'moderator'))
+  );
+
+-- 4. Triggers (if any)
+CREATE TRIGGER on_post_insert ...
+```
+
+---
+
+### RLS rules by table
+
+| Table | SELECT | INSERT | UPDATE | DELETE |
+|---|---|---|---|---|
+| `profiles` | all authenticated | — (trigger creates it) | owner only | — |
+| `courses`, `lessons`, `recordings` | all authenticated | admin only (service role) | admin only | admin only |
+| `lesson_progress` | owner only | owner only | — | — |
+| `posts`, `post_comments` | all authenticated | authenticated | owner only | owner + admin + moderator |
+| `post_reactions` | all authenticated | authenticated | — | owner only |
+| `event_rsvps` | all authenticated | authenticated | — | owner only |
+| `group_members` | all authenticated | authenticated | — | owner only |
+| `xp_events` | owner only | service role only (via RPC) | — | — |
+| `subscriptions` | owner only | service role only | service role only | — |
+| `cardcom_tokens` | **none** (service role only) | service role only | service role only | — |
+| `notifications` | owner only | service role only | owner (is_read) | owner only |
+| `messages` | thread participant | thread participant | — | sender only |
+
+`cardcom_tokens` has no client-accessible RLS — all billing operations go through Edge Functions using the service role key.
+
+---
+
+### RPCs (call via `supabase.rpc()`)
+
+Defined in `supabase/migrations/..._rpcs.sql`:
+
+| Function | Purpose |
+|---|---|
+| `increment_xp(user_id, amount, reason, reference_id)` | Atomic XP insert + level-up check, returns new level if changed |
+| `get_user_xp_rank(user_id)` | Returns leaderboard rank (all-time / weekly / monthly) |
+| `search_content(query text, types text[])` | Full-text search across courses, recordings, posts, events, users, groups |
+| `get_or_create_dm_thread(other_user_id)` | Finds or creates a direct message thread |
+
+---
+
+### Edge Functions
+
+All Edge Functions use the **service role key** and run server-side. Never expose service role to the client.
+
+| Function | Trigger | Notes |
+|---|---|---|
+| `process-cardcom-webhook` | HTTP POST from Cardcom | Validates HMAC, updates subscription status |
+| `send-event-reminder` | pg_cron (X hours before event) | Sends via Resend; timing TBD with client |
+| `send-notification-email` | Called from DB trigger or other function | Resend transactional |
+| `ai-mentor-chat` | HTTP POST from client | Streams Claude/OpenAI response |
+| `campaign-webhook` | Called on signup/subscribe/cancel/level-up | Provider TBD with client |
+
+---
+
+### TypeScript types
+
+After any schema change, regenerate and commit:
+```bash
+supabase gen types typescript --local > src/lib/database.types.ts
+```
+
+All hooks and server utilities import from `src/lib/database.types.ts`. Never write manual type definitions for DB rows.
+
+---
+
+### Brainers-specific migration scripts
+
+The one-time WordPress import scripts are **not** Supabase migrations. They live in the Brainers fork only:
+```
+scripts/wordpress-migration/
+├── 01-users.ts
+├── 02-subscriptions.ts
+├── 03-courses.ts
+└── ...
+```
+These run once against the Brainers Supabase project. The upstream template stays clean.

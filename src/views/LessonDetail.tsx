@@ -6,7 +6,7 @@ import Link from "next/link";
 import {
   ChevronRight, Clock, Play,
   CheckCircle2, BookOpen,
-  Bookmark, Share2, ExternalLink, List,
+  Bookmark, Share2, ExternalLink, List, Maximize2, Minimize2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -56,6 +56,7 @@ export default function LessonDetail() {
 
   const [bookmarked, setBookmarked] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [theaterMode, setTheaterMode] = useState(false);
 
   if (!course || !lesson) {
     return (
@@ -70,7 +71,7 @@ export default function LessonDetail() {
   const nextLesson = lessonIndex < totalLessons - 1 ? lessonIndex + 1 : null;
 
   return (
-    <div className="flex flex-row-reverse gap-6 max-w-6xl mx-auto">
+    <div className={theaterMode ? "w-full" : "flex flex-row-reverse gap-6 max-w-6xl mx-auto"}>
       {/* Main Content */}
       <div className="flex-1 min-w-0">
         {/* Breadcrumb */}
@@ -102,7 +103,8 @@ export default function LessonDetail() {
         </div>
 
         {/* Video Player */}
-        <div className="w-full aspect-video rounded-2xl gradient-hero relative flex items-center justify-center overflow-hidden mb-4 group cursor-pointer shadow-lg">
+        <div className={theaterMode ? "bg-black/90 -mx-3 sm:-mx-4 px-0 mb-4" : ""}>
+        <div className={`w-full aspect-video ${theaterMode ? "rounded-none" : "rounded-2xl mb-4"} gradient-hero relative flex items-center justify-center overflow-hidden group cursor-pointer shadow-lg`}>
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_75%,hsla(0,0%,100%,0.12),transparent_50%)]" />
           <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
           <div className="relative h-20 w-20 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center group-hover:scale-110 group-hover:bg-black/60 transition-all duration-300 shadow-2xl">
@@ -118,6 +120,7 @@ export default function LessonDetail() {
               <Play className="h-3 w-3 fill-current" /> לחצו לצפייה
             </span>
           </div>
+        </div>
         </div>
 
         {/* Action bar */}
@@ -149,6 +152,15 @@ export default function LessonDetail() {
               className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all cursor-pointer"
             >
               <Share2 className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setTheaterMode(t => !t)}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer ${
+                theaterMode ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-primary hover:bg-primary/10"
+              }`}
+              title={theaterMode ? "יציאה ממצב תיאטרון" : "מצב תיאטרון"}
+            >
+              {theaterMode ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
             </button>
           </div>
 
@@ -244,7 +256,7 @@ export default function LessonDetail() {
       </div>
 
       {/* Lessons Sidebar */}
-      <aside className={`hidden lg:block shrink-0 sticky top-[5rem] h-[calc(100vh-6rem)] transition-all duration-300 ${sidebarOpen ? "w-72" : "w-10"}`}>
+      <aside className={`${theaterMode ? "hidden" : "hidden lg:block"} shrink-0 sticky top-[5rem] h-[calc(100vh-6rem)] transition-all duration-300 ${sidebarOpen ? "w-72" : "w-10"}`}>
         {sidebarOpen ? (
           <div className="bg-card/80 backdrop-blur-sm rounded-2xl border border-border/50 h-full flex flex-col overflow-hidden">
             {/* Header */}
