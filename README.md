@@ -1,36 +1,71 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# courses-clubs
 
-## Getting Started
+Upstream template for Hebrew AI club platforms. Fork this repo to create a branded community platform (courses, events, groups, social feed, AI tools) for a new club — the only file you need to change is `src/config/club.ts`.
 
-First, run the development server:
+> **Current fork:** Brainers Club — קהילת ה-AI הישראלית
+
+## Quick Start
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# → http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Multi-Club Theming
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Every instance of this platform is a fork of this repo. To rebrand for a new club:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Edit [`src/config/club.ts`](src/config/club.ts) — name, colors, social links, feature flags
+2. Swap logos in `public/assets/` — `club-logo.png`, `club-hero-logo.png`, `favicon.ico`
+3. `npm run build` to verify
 
-## Learn More
+Full guide: [docs/forking.md](docs/forking.md)
 
-To learn more about Next.js, take a look at the following resources:
+## Routes
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Path | View | Description |
+|---|---|---|
+| `/` | Feed | Main social feed |
+| `/community` | Feed | Alias for feed |
+| `/onboarding` | Home | Welcome / getting started |
+| `/courses` | Courses | Course catalog |
+| `/courses/[id]` | CourseDetail | Course overview + lessons |
+| `/courses/[id]/lesson/[lessonId]` | LessonDetail | Lesson player |
+| `/recordings` | Recordings | Past session recordings |
+| `/recordings/[id]` | RecordingDetail | Recording player |
+| `/events` | Events | Upcoming events + calendar |
+| `/events/[id]` | EventDetail | Event detail + RSVP |
+| `/groups` | Groups | Community groups |
+| `/groups/[groupId]` | GroupDetail | Group feed + members |
+| `/leaderboard` | Leaderboard | XP rankings |
+| `/profile` | Profile | User profile + completion |
+| `/admin` | Admin | Admin dashboard + charts |
+| `/ai-agents` | AIAgents | AI tool gallery |
+| `/ai-agents/[id]` | AgentDetail | Tool detail + launch |
+| `/tutorials` | Tutorials | Videos + written guides |
+| `/tutorials/video/[id]` | VideoTutorialDetail | Video tutorial |
+| `/tutorials/guide/[id]` | GuideDetail | Written guide |
+| `/invite` | Invite | Referral tracking |
+| `/chats` | Chats | Direct messages |
+| `/settings` | Settings | User preferences + notifications |
+| `/subscription` | Subscription | Plan management |
+| `/contact` | Contact | Contact form |
+| `*` | NotFound | 404 |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Tech Stack
 
-## Deploy on Vercel
+- **Framework:** Next.js 16 (App Router) · React 19 · TypeScript strict
+- **Styling:** Tailwind CSS v4 · shadcn/ui (Base UI) · Framer Motion
+- **State:** TanStack React Query
+- **Forms:** React Hook Form + Zod
+- **Charts:** Recharts
+- **Toasts:** Sonner
+- **Icons:** Lucide React
+- **Fonts:** Heebo + Rubik (Hebrew-first, RTL)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Docs
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- [Architecture](docs/architecture.md) — App Router pattern, theming, data layer, conventions
+- [Forking Guide](docs/forking.md) — How to create a new club fork
+- [Product Spec](docs/spec.md) — Feature requirements from client
