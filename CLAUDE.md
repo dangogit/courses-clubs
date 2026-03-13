@@ -131,3 +131,15 @@ Allowed external image hosts (configured in `next.config.ts`): `dicebear.com`, `
 **Data migration:** Phase 5 migrates ~7,143 users, 246 lessons, 138K progress records, 6 groups from WordPress (BuddyBoss + LearnDash + WooCommerce + GamiPress). See `docs/data-migration.md`.
 
 When implementing Phase 2, query hooks go in `src/hooks/` and use TanStack Query (already wired up in providers).
+
+## Active Skills
+
+Installed in `.agents/skills/` — invoke these automatically when relevant:
+
+| Skill | Invoke when |
+|---|---|
+| `supabase-postgres-best-practices` | Writing SQL, RLS policies, RPCs, schema design, migrations |
+| `nextjs-app-router-patterns` | Server Components, Server Actions, Suspense boundaries, route handlers |
+| `tailwind-design-system` | Tailwind v4 tokens, CVA component variants, design system patterns |
+
+**Dev workflow:** Use `/start-issue` to pick up the next GitHub issue from the project board (dangogit/courses-clubs, Project #6), move it through the Kanban, implement, verify, and create a PR.
