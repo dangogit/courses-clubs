@@ -5,12 +5,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-npm run dev      # Start dev server (localhost:3000)
-npm run build    # Production build
-npm run lint     # ESLint (flat config, v9)
+npm run dev        # Start dev server (localhost:3000)
+npm run build      # Production build
+npm run lint       # ESLint (flat config, v9)
+npm test           # Run all tests (Vitest)
+npm run test:watch # Watch mode during development
 ```
 
-No test runner is configured — this is a Phase 1 mock-data app.
+## Testing
+
+**Stack:** Vitest + React Testing Library + jsdom
+
+**Convention:** Every new function, hook, or component gets a test file at `__tests__/<name>.test.ts(x)` co-located next to the source.
+
+**Test-first for logic:** Write tests before implementation for pure functions (data utils, validators, transformers). Write tests alongside for UI components.
+
+**Integration tests (Phase 2+):** When Supabase hooks land, add integration tests that hit the local Supabase instance (port 55122) to verify RLS policies and RPCs.
 
 ## What This Is
 

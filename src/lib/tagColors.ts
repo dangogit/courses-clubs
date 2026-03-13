@@ -21,6 +21,9 @@ export const CONTENT_CATEGORIES = [
 
 export type PlatformCategory = (typeof PLATFORM_CATEGORIES)[number];
 
+export const DEFAULT_TAG_COLOR =
+  "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20";
+
 /**
  * Returns consistent Tailwind classes for each category tag.
  * bg: ~10% opacity, text: saturated color — soft and easy on the eye.
@@ -28,7 +31,7 @@ export type PlatformCategory = (typeof PLATFORM_CATEGORIES)[number];
 export function getTagColor(tag: string): string {
   switch (tag) {
     case "הכל":
-      return "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20";
+      return DEFAULT_TAG_COLOR;
     case "פופולרי":
       return "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20";
     case "בעלי עסקים":
@@ -53,7 +56,7 @@ export function getTagColor(tag: string): string {
     case "יצירת סרטונים":
       return "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20";
     default:
-      return "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20";
+      return DEFAULT_TAG_COLOR;
   }
 }
 
