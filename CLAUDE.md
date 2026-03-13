@@ -128,6 +128,8 @@ Allowed external image hosts (configured in `next.config.ts`): `dicebear.com`, `
 
 **RLS principles:** `subscriptions` and `cardcom_tokens` — service role only, never expose to client. Posts/comments readable by all members, writable/deletable by owner + admin + group moderator.
 
+**CRITICAL — Migrations only:** Every DB change (tables, RLS, triggers, indexes, seed data) MUST go through `supabase/migrations/` files. This database is recreated from scratch for each club fork via `supabase db push`. Never make manual DB changes, never use the Supabase dashboard to modify schema. If it's not in a migration file, it doesn't exist.
+
 **Data migration:** Phase 5 migrates ~7,143 users, 246 lessons, 138K progress records, 6 groups from WordPress (BuddyBoss + LearnDash + WooCommerce + GamiPress). See `docs/data-migration.md`.
 
 When implementing Phase 2, query hooks go in `src/hooks/` and use TanStack Query (already wired up in providers).
