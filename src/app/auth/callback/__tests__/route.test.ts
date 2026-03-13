@@ -72,4 +72,40 @@ describe("GET /auth/callback", () => {
     const location = response.headers.get("location")!;
     expect(location).toContain("/login?error=");
   });
+
+  describe("open redirect protection", () => {
+    beforeEach(() => {
+      mockExchangeCodeForSession.mockResolvedValue({ error: null });
+    });
+
+    it("redirects to / when next is an absolute URL", async () => {
+      const response = await GET(
+        makeRequest(
+          "http://localhost:3000/auth/callback?code=valid-code&next=https://evil.com"
+        )
+      );
+
+      expect(response.headers.get("location")).toBe("http://localhost:3000/");
+    });
+
+    it("redirects to / when next is a protocol-relative URL", async () => {
+      const response = await GET(
+        makeRequest(
+          "http://localhost:3000/auth/callback?code=valid-code&next=//evil.com"
+        )
+      );
+
+      expect(response.headers.get("location")).toBe("http://localhost:3000/");
+    });
+
+    it("redirects to / when next is a protocol-relative URL with path", async () => {
+      const response = await GET(
+        makeRequest(
+          "http://localhost:3000/auth/callback?code=valid-code&next=//evil.com/phish"
+        )
+      );
+
+      expect(response.headers.get("location")).toBe("http://localhost:3000/");
+    });
+  });
 });

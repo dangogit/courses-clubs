@@ -45,6 +45,7 @@ describe("Login view", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockSearchParams.delete("error");
+    mockSearchParams.delete("next");
   });
 
   it("renders club logo and name", () => {
@@ -188,6 +189,74 @@ describe("Login view", () => {
       expect(
         screen.getByRole("button", { name: "שלח שוב" })
       ).toBeInTheDocument();
+    });
+  });
+
+  it("email input has autoComplete attribute", () => {
+    render(<LoginForm />);
+
+    expect(screen.getByLabelText("אימייל")).toHaveAttribute(
+      "autocomplete",
+      "email"
+    );
+  });
+
+  it("forwards next param in Google OAuth redirectTo", async () => {
+    mockSearchParams.set("next", "/courses/1");
+    mockSignInWithOAuth.mockResolvedValue({ error: null });
+    render(<LoginForm />);
+
+    fireEvent.click(screen.getByRole("button", { name: /google/i }));
+
+    await waitFor(() => {
+      expect(mockSignInWithOAuth).toHaveBeenCalledWith({
+        provider: "google",
+        options: {
+          redirectTo: expect.stringContaining(
+            "/auth/callback?next=%2Fcourses%2F1"
+          ),
+        },
+      });
+    });
+  });
+
+  it("forwards next param in magic link emailRedirectTo", async () => {
+    mockSearchParams.set("next", "/courses/1");
+    mockSignInWithOtp.mockResolvedValue({ error: null });
+    render(<LoginForm />);
+
+    fireEvent.change(screen.getByLabelText("אימייל"), {
+      target: { value: "test@example.com" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: /שלח קישור התחברות/ })
+    );
+
+    await waitFor(() => {
+      expect(mockSignInWithOtp).toHaveBeenCalledWith({
+        email: "test@example.com",
+        options: {
+          emailRedirectTo: expect.stringContaining(
+            "/auth/callback?next=%2Fcourses%2F1"
+          ),
+        },
+      });
+    });
+  });
+
+  it("uses plain callback URL when no next param", async () => {
+    mockSignInWithOAuth.mockResolvedValue({ error: null });
+    render(<LoginForm />);
+
+    fireEvent.click(screen.getByRole("button", { name: /google/i }));
+
+    await waitFor(() => {
+      expect(mockSignInWithOAuth).toHaveBeenCalledWith({
+        provider: "google",
+        options: {
+          redirectTo: expect.stringMatching(/\/auth\/callback$/),
+        },
+      });
     });
   });
 });

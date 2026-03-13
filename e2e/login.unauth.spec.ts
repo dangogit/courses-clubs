@@ -2,8 +2,7 @@ import { test, expect } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import {
   TEST_USER,
-  getLatestMagicLink,
-  extractAuthCode,
+  waitForMagicLinkCode,
   clearMailbox,
 } from "./helpers";
 
@@ -87,20 +86,8 @@ test.describe("Magic Link auth flow", () => {
       timeout: 10_000,
     });
 
-    // Fetch magic link from Mailpit
-    let magicLink: string | null = null;
-    for (let attempt = 0; attempt < 10; attempt++) {
-      await page.waitForTimeout(500);
-      magicLink = await getLatestMagicLink(email);
-      if (magicLink) break;
-    }
-
-    expect(magicLink).toBeTruthy();
-
-    // Extract auth code by following the verify URL server-side
-    // (Supabase redirects to site_url which may differ from the test server port)
-    const code = await extractAuthCode(magicLink!);
-    expect(code).toBeTruthy();
+    // Fetch magic link from Mailpit and extract auth code
+    const code = await waitForMagicLinkCode(page, email);
 
     // Navigate to our auth callback with the extracted code
     await page.goto(`/auth/callback?code=${code}`);

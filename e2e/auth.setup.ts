@@ -2,8 +2,7 @@ import { test as setup, expect } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import {
   TEST_USER,
-  getLatestMagicLink,
-  extractAuthCode,
+  waitForMagicLinkCode,
   clearMailbox,
 } from "./helpers";
 
@@ -43,25 +42,10 @@ setup("create and authenticate test user", async ({ page }) => {
     timeout: 10_000,
   });
 
-  // 4. Fetch magic link from Mailpit
-  let magicLink: string | null = null;
-  for (let attempt = 0; attempt < 10; attempt++) {
-    await page.waitForTimeout(500);
-    magicLink = await getLatestMagicLink(TEST_USER.email);
-    if (magicLink) break;
-  }
+  // 4. Fetch magic link from Mailpit and extract auth code
+  const code = await waitForMagicLinkCode(page, TEST_USER.email);
 
-  if (!magicLink) {
-    throw new Error("Magic link not found in Mailpit after 5 seconds");
-  }
-
-  // 5. Extract auth code by following the verify URL server-side
-  const code = await extractAuthCode(magicLink);
-  if (!code) {
-    throw new Error("Failed to extract auth code from magic link");
-  }
-
-  // 6. Navigate to auth callback with the code (sets session cookies)
+  // 5. Navigate to auth callback with the code (sets session cookies)
   await page.goto(`/auth/callback?code=${code}`);
   await page.waitForURL("/", { timeout: 15_000 });
 

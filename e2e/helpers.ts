@@ -65,6 +65,11 @@ export async function extractAuthCode(
   magicLinkUrl: string
 ): Promise<string | null> {
   const res = await fetch(magicLinkUrl, { redirect: "manual" });
+
+  if (res.status < 300 || res.status >= 400) {
+    return null;
+  }
+
   const location = res.headers.get("location");
   if (!location) return null;
 
@@ -79,4 +84,34 @@ export async function clearMailbox(): Promise<void> {
   await fetch(`${MAILPIT_URL}/api/v1/messages`, {
     method: "DELETE",
   });
+}
+
+/**
+ * Polls Mailpit for a magic link sent to the given email, then
+ * extracts the auth code by following the verify URL server-side.
+ */
+export async function waitForMagicLinkCode(
+  page: { waitForTimeout: (ms: number) => Promise<void> },
+  email: string,
+  maxAttempts = 10
+): Promise<string> {
+  let magicLink: string | null = null;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    await page.waitForTimeout(500);
+    magicLink = await getLatestMagicLink(email);
+    if (magicLink) break;
+  }
+
+  if (!magicLink) {
+    throw new Error(
+      `Magic link not found in Mailpit for ${email} after ${maxAttempts * 500}ms`
+    );
+  }
+
+  const code = await extractAuthCode(magicLink);
+  if (!code) {
+    throw new Error("Failed to extract auth code from magic link redirect");
+  }
+
+  return code;
 }

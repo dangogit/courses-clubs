@@ -44,6 +44,7 @@ function GoogleIcon({ className }: { className?: string }) {
 export function LoginForm() {
   const searchParams = useSearchParams();
   const error = searchParams.get("error");
+  const next = searchParams.get("next");
 
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState<"google" | "magic-link" | null>(null);
@@ -55,13 +56,18 @@ export function LoginForm() {
     }
   }, [error]);
 
+  function getCallbackUrl() {
+    const base = `${window.location.origin}/auth/callback`;
+    return next ? `${base}?next=${encodeURIComponent(next)}` : base;
+  }
+
   async function handleGoogleLogin() {
     setLoading("google");
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: getCallbackUrl(),
       },
     });
     if (error) {
@@ -79,7 +85,7 @@ export function LoginForm() {
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim(),
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: getCallbackUrl(),
       },
     });
 
@@ -167,6 +173,7 @@ export function LoginForm() {
                     onChange={(e) => setEmail(e.target.value)}
                     required
                     dir="ltr"
+                    autoComplete="email"
                   />
                 </div>
                 <Button
