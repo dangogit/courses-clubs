@@ -2,23 +2,21 @@ import { describe, it, expect } from "vitest";
 import {
   PLATFORM_CATEGORIES,
   CONTENT_CATEGORIES,
+  DEFAULT_TAG_COLOR,
   getTagColor,
   getCategoryIcon,
 } from "../tagColors";
-
-const DEFAULT_COLOR =
-  "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20";
 
 describe("getTagColor", () => {
   it("returns a non-default color for each platform category", () => {
     for (const cat of PLATFORM_CATEGORIES) {
       if (cat === "הכל") continue; // "הכל" intentionally uses slate (same as default)
-      expect(getTagColor(cat)).not.toBe(DEFAULT_COLOR);
+      expect(getTagColor(cat)).not.toBe(DEFAULT_TAG_COLOR);
     }
   });
 
   it("returns default slate for unknown tags", () => {
-    expect(getTagColor("nonexistent-tag")).toBe(DEFAULT_COLOR);
+    expect(getTagColor("nonexistent-tag")).toBe(DEFAULT_TAG_COLOR);
   });
 
   it("maps legacy aliases to the same color as canonical", () => {
