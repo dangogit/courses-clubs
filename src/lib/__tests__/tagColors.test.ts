@@ -8,11 +8,15 @@ import {
 } from "../tagColors";
 
 describe("getTagColor", () => {
-  it("returns a non-default color for each platform category", () => {
+  it("returns a non-default color for each platform category (except הכל)", () => {
     for (const cat of PLATFORM_CATEGORIES) {
-      if (cat === "הכל") continue; // "הכל" intentionally uses slate (same as default)
+      if (cat === "הכל") continue;
       expect(getTagColor(cat)).not.toBe(DEFAULT_TAG_COLOR);
     }
+  });
+
+  it("maps 'הכל' to the default slate color (intentional)", () => {
+    expect(getTagColor("הכל")).toBe(DEFAULT_TAG_COLOR);
   });
 
   it("returns default slate for unknown tags", () => {
