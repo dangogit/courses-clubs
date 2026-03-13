@@ -9,6 +9,7 @@ CREATE TABLE levels (
   id              int PRIMARY KEY,
   title           text NOT NULL,
   xp_required     int NOT NULL,
+  icon            text,
   badge_url       text,
   color           text
 );
@@ -55,10 +56,18 @@ CREATE POLICY "profiles_select_authenticated" ON profiles
   FOR SELECT TO authenticated
   USING (true);
 
+CREATE POLICY "profiles_insert_owner" ON profiles
+  FOR INSERT TO authenticated
+  WITH CHECK (auth.uid() = id);
+
 CREATE POLICY "profiles_update_owner" ON profiles
   FOR UPDATE TO authenticated
   USING (auth.uid() = id)
   WITH CHECK (auth.uid() = id);
+
+CREATE POLICY "profiles_delete_none" ON profiles
+  FOR DELETE TO authenticated
+  USING (false);
 
 -- =============================================================================
 -- 5. Updated_at trigger
@@ -80,7 +89,28 @@ CREATE TRIGGER profiles_updated_at
   EXECUTE FUNCTION update_updated_at();
 
 -- =============================================================================
--- 6. Auto-create profile on sign-up
+-- 6. Protect role column from client-side escalation
+-- =============================================================================
+
+CREATE OR REPLACE FUNCTION protect_role_column()
+RETURNS trigger
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  IF NEW.role IS DISTINCT FROM OLD.role THEN
+    NEW.role = OLD.role;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER profiles_protect_role
+  BEFORE UPDATE ON profiles
+  FOR EACH ROW
+  EXECUTE FUNCTION protect_role_column();
+
+-- =============================================================================
+-- 7. Auto-create profile on sign-up
 -- =============================================================================
 
 CREATE OR REPLACE FUNCTION handle_new_user()

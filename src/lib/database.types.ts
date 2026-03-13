@@ -38,6 +38,7 @@ export type Database = {
         Row: {
           badge_url: string | null
           color: string | null
+          icon: string | null
           id: number
           title: string
           xp_required: number
@@ -45,6 +46,7 @@ export type Database = {
         Insert: {
           badge_url?: string | null
           color?: string | null
+          icon?: string | null
           id: number
           title: string
           xp_required: number
@@ -52,6 +54,7 @@ export type Database = {
         Update: {
           badge_url?: string | null
           color?: string | null
+          icon?: string | null
           id?: number
           title?: string
           xp_required?: number
