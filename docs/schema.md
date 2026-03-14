@@ -10,6 +10,22 @@ Supabase Auth handles `auth.users`. All other tables reference `auth.users.id`.
 
 ---
 
+## Access Tiers
+
+```sql
+tiers
+  id              serial PRIMARY KEY
+  level           int NOT NULL UNIQUE    -- 0=free, 1=basic, 2=premium
+  name            text NOT NULL          -- admin-editable display name
+  description     text
+  color           text                   -- bare HSL value for UI badges
+  created_at      timestamptz DEFAULT now()
+```
+
+Seeded: free (0), basic (1), premium (2). See [subscription-tiers-design.md](superpowers/specs/2026-03-14-subscription-tiers-design.md).
+
+---
+
 ## Profiles
 
 ```sql
@@ -22,6 +38,7 @@ profiles
   bio             text
   phone           text
   role            text        -- 'member' | 'moderator' | 'admin'
+  tier_level      int DEFAULT 0          -- denormalized from subscription; 0=free, 1=basic, 2=premium
   xp_total        int DEFAULT 0
   level_id        int REFERENCES levels
   created_at      timestamptz DEFAULT now()
@@ -40,6 +57,7 @@ courses
   thumbnail_url   text
   tag             text        -- category tag
   duration_label  text        -- e.g. "6 שעות"
+  min_tier_level  int DEFAULT 0          -- 0=free, 1=basic, 2=premium
   order_index     int DEFAULT 0
   is_published    bool DEFAULT false
   created_at      timestamptz DEFAULT now()
@@ -51,6 +69,7 @@ lessons
   description     text
   bunny_video_id  text        -- Bunny.net stream GUID
   duration_label  text        -- e.g. "25 דק׳"
+  min_tier_level  int DEFAULT NULL       -- NULL = inherit from parent course
   order_index     int DEFAULT 0
   is_published    bool DEFAULT false
 
@@ -69,6 +88,7 @@ recordings
   duration_label  text
   recorded_at     date
   tags            text[]
+  min_tier_level  int DEFAULT 0          -- 0=free, 1=basic, 2=premium
   is_published    bool DEFAULT false
   created_at      timestamptz DEFAULT now()
 
@@ -81,6 +101,7 @@ tutorials
   thumbnail_url   text
   category        text
   duration_label  text
+  min_tier_level  int DEFAULT 0          -- 0=free, 1=basic, 2=premium
   is_published    bool DEFAULT false
   created_at      timestamptz DEFAULT now()
 ```
@@ -100,6 +121,7 @@ events
   zoom_url        text             -- admin adds manually
   is_online       bool DEFAULT true
   max_attendees   int
+  min_tier_level  int DEFAULT 0          -- 0=free, 1=basic, 2=premium
   is_published    bool DEFAULT false
   created_at      timestamptz DEFAULT now()
 
@@ -123,6 +145,7 @@ groups
   banner_url      text
   category        text
   is_private      bool DEFAULT false
+  min_tier_level  int DEFAULT 0          -- 0=free, 1=basic, 2=premium
   created_by      uuid REFERENCES auth.users
   created_at      timestamptz DEFAULT now()
 
@@ -209,6 +232,7 @@ subscription_products
   name            text NOT NULL
   price_agorot    int NOT NULL             -- price in agorot (1 ILS = 100 agorot)
   interval        text NOT NULL            -- 'monthly' | 'yearly'
+  tier_id         int REFERENCES tiers     -- which tier this product grants
   trial_days      int DEFAULT 0
   is_active       bool DEFAULT true
   created_at      timestamptz DEFAULT now()
@@ -322,8 +346,11 @@ CREATE INDEX ON messages (thread_id, created_at);
 
 ## Row Level Security (RLS) Principles
 
-- `profiles` — readable by all authenticated users; writable only by owner
+- `tiers` — readable by all authenticated users; writable via service role only
+- `profiles` — readable by all authenticated users; writable only by owner; `role` and `tier_level` columns protected by trigger (cannot be escalated client-side)
 - `posts`, `comments` — readable by all members; writable by owner; deletable by owner + admin + group moderator
+- `group_members` — INSERT gated by tier: `profiles.tier_level >= groups.min_tier_level`
+- `event_rsvps` — INSERT gated by tier: `profiles.tier_level >= events.min_tier_level`
 - `subscriptions`, `cardcom_tokens` — readable/writable by owner only (no RLS for admin — use service role)
 - `notifications` — readable/writable by owner only
 - `lesson_progress` — readable by owner; insertable by owner + triggers

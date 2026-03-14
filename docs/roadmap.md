@@ -43,17 +43,26 @@ Bug fixes and new features flow from main repo to all forks.
 - Bunny.net video player integration
 - Lesson progress tracking (mark complete, progress bar)
 - Recording library with category filtering + search
+- `min_tier_level` column on courses, lessons, recordings, tutorials — admin sets access level
 
 **Community (3 days)**
 - Social feed: posts, likes, comments wired to real DB
-- Groups: membership, group-specific feeds
+- Groups: membership, group-specific feeds (group join gated by tier)
 - @mention functionality (notify mentioned users)
 
 **Events (1 day)**
 - Event listings and detail pages wired to Supabase
-- RSVP system
+- RSVP system (gated by event tier level)
 - Email reminders (via Resend)
 - Calendar export (.ics)
+
+**Access Tiers (woven into above)**
+- `tiers` table migration + seed data (free/basic/premium)
+- Tier selector UI on content items (admin mode)
+- "Visible but locked" pattern: lock overlay + upgrade CTA on gated content
+- Lesson-level tier override (inherit from course by default)
+- Video signed URL gate: server checks tier before generating Bunny.net URL
+- See [subscription-tiers-design.md](superpowers/specs/2026-03-14-subscription-tiers-design.md)
 
 **✅ Verification — must pass before Phase 3:**
 - [ ] Course catalog loads from Supabase (not mock data)
@@ -63,6 +72,9 @@ Bug fixes and new features flow from main repo to all forks.
 - [ ] Group feed is scoped to group members only
 - [ ] RSVP to event creates a row in `event_rsvps`
 - [ ] Event reminder email fires (manual trigger via Supabase Edge Function invoke)
+- [ ] Admin can set course/group/event tier level via in-app selector
+- [ ] Free-tier user sees locked content with upgrade CTA (not hidden)
+- [ ] Video URL endpoint returns 403 for under-tiered users
 
 ---
 
@@ -80,16 +92,20 @@ Bug fixes and new features flow from main repo to all forks.
 - Trial flow: credit card required upfront; block on failed payment
 - Automatic retry on failed billing with dunning emails
 - Cancellation popup with discount offer (retention flow)
-- Admin: create/edit subscription products with custom pricing
+- Admin: create/edit subscription products with custom pricing + tier assignment
 - Coupon codes + invite links with embedded discounts
+- `sync_tier_level` trigger: auto-update `profiles.tier_level` on subscription changes
+- Admin comp accounts: `admin_set_tier_level` RPC for granting access without payment
 
 **✅ Verification — must pass before Phase 4:**
 - [ ] Completing a lesson awards XP and updates `xp_events` table
 - [ ] Level-up triggers celebration animation and updates `profiles.level_id`
 - [ ] Referral link signup credits referrer with XP
 - [ ] CardCom test card completes checkout and creates `subscriptions` row with status `trialing`
-- [ ] Failed payment (use CardCom test decline card) transitions subscription to `past_due` and blocks access
+- [ ] Failed payment (use CardCom test decline card) transitions subscription to `past_due` and blocks access (tier_level resets to 0)
 - [ ] Cancellation flow presents discount offer before confirming cancel
+- [ ] `sync_tier_level` trigger correctly updates `profiles.tier_level` on subscription status change
+- [ ] Admin can grant tier override via `admin_set_tier_level` RPC (comp accounts)
 
 ---
 
@@ -98,7 +114,8 @@ Bug fixes and new features flow from main repo to all forks.
 **Admin panel (3 days)**
 - Dashboard stats: connect Recharts to live Supabase data
 - Inline CMS: edit courses, recordings, events directly in UI
-- User management: view, suspend, change roles
+- User management: view, suspend, change roles, set tier overrides
+- Tiers management: rename tiers, set colors/descriptions
 - Moderation: delete posts, pin announcements
 
 **Notifications (1.5 days)**
