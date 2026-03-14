@@ -5,22 +5,30 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-npm run dev        # Start dev server (localhost:3000)
-npm run build      # Production build
-npm run lint       # ESLint (flat config, v9)
-npm test           # Run all tests (Vitest)
-npm run test:watch # Watch mode during development
+npm run dev          # Start dev server (localhost:3000)
+npm run build        # Production build
+npm run lint         # ESLint (flat config, v9)
+npm test             # Run all unit tests (Vitest)
+npm run test:watch   # Watch mode during development
+npx playwright test  # Run E2E tests (starts dev server on :3100)
 ```
 
 ## Testing
 
-**Stack:** Vitest + React Testing Library + jsdom
+**Unit tests:** Vitest + React Testing Library + jsdom
 
 **Convention:** Every new function, hook, or component gets a test file at `__tests__/<name>.test.ts(x)` co-located next to the source.
 
 **Test-first for logic:** Write tests before implementation for pure functions (data utils, validators, transformers). Write tests alongside for UI components.
 
-**Integration tests (Phase 2+):** When Supabase hooks land, add integration tests that hit the local Supabase instance (port 55122) to verify RLS policies and RPCs.
+**E2E tests:** Playwright (`e2e/` directory, `playwright.config.ts`)
+- Auth setup in `e2e/auth.setup.ts`, stored state in `e2e/.auth/user.json`
+- Authenticated specs: `*.spec.ts` (run under `chromium` project with stored auth)
+- Unauthenticated specs: `*.unauth.spec.ts` (run under `unauthenticated` project, no auth)
+- Dev server on port 3100 for E2E: `npx playwright test`
+- Always add E2E tests for new Supabase-backed features — unit tests with mocked Supabase don't catch real integration issues
+
+**Integration tests:** When adding RLS policies or RPCs, add integration tests that hit the local Supabase instance (port 55122) to verify access control.
 
 ## What This Is
 
@@ -28,8 +36,9 @@ A **forked community platform template** for AI education clubs. One repo = one 
 
 **Stack:** Next.js 16 (App Router) + React 19 + TypeScript (strict) + Tailwind CSS v4 + shadcn/ui (Base UI) + TanStack React Query v5
 
-**Phase 1 (current):** All data is hardcoded TypeScript mock arrays in `src/data/`. No auth, no backend.
-**Phase 2 (planned):** Supabase (auth + database) + Bunny.net video CDN.
+**Phase 1 (done):** Supabase auth (Google OAuth + Magic Link), route protection middleware, profile creation on first sign-in.
+**Phase 2 (in progress):** Supabase database — courses/lessons/progress wired to Supabase. Other data (recordings, events, groups, agents) still uses mock arrays in `src/data/`.
+**Phase 3+ (planned):** Remaining tables, Bunny.net video CDN, payments.
 
 ## Architecture
 
