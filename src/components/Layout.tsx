@@ -8,7 +8,7 @@ import {
   Search, Bell, MessageCircle, Sparkles, Bot,
   Settings, LogOut, User, Crown, Moon, Sun, MessageSquareText, ChevronDown, Shield, Zap,
 } from "lucide-react";
-import { initialCourses } from "@/data/courses";
+import { useCourses } from "@/hooks/useCourses";
 import { initialRecordings } from "@/data/recordings";
 import { groups } from "@/data/groups";
 import { agents } from "@/data/agents";
@@ -246,13 +246,15 @@ interface SearchResult {
 }
 
 function useSearch(query: string): SearchResult[] {
+  const { data: courses = [] } = useCourses();
+
   return useMemo(() => {
     const q = query.trim().toLowerCase();
     if (q.length < 2) return [];
     const results: SearchResult[] = [];
 
-    initialCourses.forEach((c, i) => {
-      if (c.title.toLowerCase().includes(q)) results.push({ label: c.title, href: `/courses/${i}`, category: "קורסים" });
+    courses.forEach((c) => {
+      if (c.title.toLowerCase().includes(q)) results.push({ label: c.title, href: `/courses/${c.id}`, category: "קורסים" });
     });
     initialRecordings.forEach((r, i) => {
       if (r.title.toLowerCase().includes(q)) results.push({ label: r.title, href: `/recordings/${i}`, category: "הקלטות" });
@@ -273,7 +275,7 @@ function useSearch(query: string): SearchResult[] {
     });
 
     return results.slice(0, 12);
-  }, [query]);
+  }, [query, courses]);
 }
 
 function SearchDropdown({ query, onSelect }: { query: string; onSelect: () => void }) {

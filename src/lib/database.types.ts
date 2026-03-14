@@ -34,6 +34,115 @@ export type Database = {
   }
   public: {
     Tables: {
+      courses: {
+        Row: {
+          created_at: string
+          description: string | null
+          duration_label: string | null
+          id: string
+          is_published: boolean
+          min_tier_level: number
+          order_index: number
+          tag: string | null
+          thumbnail_url: string | null
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          duration_label?: string | null
+          id?: string
+          is_published?: boolean
+          min_tier_level?: number
+          order_index?: number
+          tag?: string | null
+          thumbnail_url?: string | null
+          title: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          duration_label?: string | null
+          id?: string
+          is_published?: boolean
+          min_tier_level?: number
+          order_index?: number
+          tag?: string | null
+          thumbnail_url?: string | null
+          title?: string
+        }
+        Relationships: []
+      }
+      lesson_progress: {
+        Row: {
+          completed_at: string
+          lesson_id: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string
+          lesson_id: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string
+          lesson_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lesson_progress_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lessons: {
+        Row: {
+          bunny_video_id: string | null
+          course_id: string
+          description: string | null
+          duration_label: string | null
+          id: string
+          is_published: boolean
+          min_tier_level: number | null
+          order_index: number
+          title: string
+        }
+        Insert: {
+          bunny_video_id?: string | null
+          course_id: string
+          description?: string | null
+          duration_label?: string | null
+          id?: string
+          is_published?: boolean
+          min_tier_level?: number | null
+          order_index?: number
+          title: string
+        }
+        Update: {
+          bunny_video_id?: string | null
+          course_id?: string
+          description?: string | null
+          duration_label?: string | null
+          id?: string
+          is_published?: boolean
+          min_tier_level?: number | null
+          order_index?: number
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lessons_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       levels: {
         Row: {
           badge_url: string | null
