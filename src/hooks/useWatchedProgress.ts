@@ -3,14 +3,11 @@ import { initialRecordings } from "@/data/recordings";
 
 const STORAGE_KEYS = {
   recording: "watched-recordings",
-  course: "watched-courses",
   tutorial: "watched-tutorials",
   guide: "read-guides",
 } as const;
 
-const COURSE_COUNT = 6;
-
-type ProgressType = "recording" | "course" | "tutorial" | "guide";
+type ProgressType = "recording" | "tutorial" | "guide";
 
 function getStoredIds(type: ProgressType): number[] {
   try {
@@ -31,8 +28,7 @@ export function useWatchedProgress(type: ProgressType) {
   const totalCount =
     type === "recording" ? initialRecordings.length :
     type === "tutorial" ? 6 :
-    type === "guide" ? 6 :
-    COURSE_COUNT;
+    6; // guide
 
   const isWatched = useCallback(
     (id: number) => watchedIds.includes(id),

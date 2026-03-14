@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -9,11 +9,12 @@ import {
   Bookmark, Share2, ExternalLink, List, Maximize2, Minimize2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { initialCourses } from "@/data/courses";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useCourse } from "@/hooks/useCourse";
+import { useLessonProgress } from "@/hooks/useLessonProgress";
 import confetti from "canvas-confetti";
 import CommentsSection, { type Comment } from "@/components/CommentsSection";
 
@@ -22,41 +23,52 @@ const mockComments: Comment[] = [
   { id: 2, author: "רונית שמש", avatar: "ronit", text: "מתי יוצא החלק הבא?", date: "לפני 4 ימים", likes: 3, replies: [] },
 ];
 
+function LessonDetailSkeleton() {
+  return (
+    <div className="max-w-6xl mx-auto space-y-4">
+      <Skeleton className="h-4 w-64" />
+      <Skeleton className="h-6 w-96" />
+      <Skeleton className="h-[56vw] max-h-[500px] w-full rounded-2xl" />
+      <div className="flex gap-2">
+        <Skeleton className="h-10 w-32 rounded-full" />
+        <Skeleton className="h-10 w-10 rounded-xl" />
+      </div>
+    </div>
+  );
+}
+
 export default function LessonDetail() {
   const { id, lessonId } = useParams() as { id: string; lessonId: string };
   const router = useRouter();
-  const courseIndex = parseInt(id || "0");
-  const lessonIndex = parseInt(lessonId || "0");
-  const course = initialCourses[courseIndex];
-  const lesson = course?.lessons[lessonIndex];
+  const { data: courseData, isLoading: courseLoading } = useCourse(id);
+  const { completedLessonIds, isCompleted, toggleProgress, isToggling, isLoading: progressLoading } = useLessonProgress(id);
 
-  const lessonKey = `watched-lessons-${courseIndex}`;
-  const [watchedIds, setWatchedIds] = useState<number[]>(() => {
-    try {
-      const raw = localStorage.getItem(lessonKey);
-      return raw ? JSON.parse(raw) : [];
-    } catch { return []; }
-  });
+  const course = courseData;
+  const lessons = useMemo(() => course?.lessons ?? [], [course]);
+  const lesson = useMemo(() => lessons.find((l) => l.id === lessonId), [lessons, lessonId]);
+  const lessonIndex = useMemo(() => lessons.findIndex((l) => l.id === lessonId), [lessons, lessonId]);
 
-  const watched = watchedIds.includes(lessonIndex);
-  const toggleWatched = useCallback(() => {
-    setWatchedIds(prev => {
-      const next = prev.includes(lessonIndex) ? prev.filter(x => x !== lessonIndex) : [...prev, lessonIndex];
-      localStorage.setItem(lessonKey, JSON.stringify(next));
-      return next;
-    });
+  const watched = lesson ? isCompleted(lesson.id) : false;
+
+  const handleToggleWatched = useCallback(() => {
+    if (!lesson) return;
+    toggleProgress(lesson.id);
     if (!watched) {
       confetti({ particleCount: 80, spread: 60, origin: { y: 0.7 }, colors: ["#22c55e", "#10b981", "#34d399", "#6ee7b7"] });
     }
-  }, [lessonIndex, lessonKey, watched]);
+  }, [lesson, toggleProgress, watched]);
 
-  const totalLessons = course?.lessons.length || 0;
-  const watchedCount = watchedIds.length;
+  const totalLessons = lessons.length;
+  const watchedCount = lessons.filter((l) => completedLessonIds.has(l.id)).length;
   const progressPercent = totalLessons > 0 ? Math.round((watchedCount / totalLessons) * 100) : 0;
 
   const [bookmarked, setBookmarked] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [theaterMode, setTheaterMode] = useState(false);
+
+  if (courseLoading || progressLoading) {
+    return <LessonDetailSkeleton />;
+  }
 
   if (!course || !lesson) {
     return (
@@ -67,8 +79,8 @@ export default function LessonDetail() {
     );
   }
 
-  const prevLesson = lessonIndex > 0 ? lessonIndex - 1 : null;
-  const nextLesson = lessonIndex < totalLessons - 1 ? lessonIndex + 1 : null;
+  const prevLesson = lessonIndex > 0 ? lessons[lessonIndex - 1] : null;
+  const nextLesson = lessonIndex < totalLessons - 1 ? lessons[lessonIndex + 1] : null;
 
   return (
     <div className={theaterMode ? "w-full" : "flex flex-row-reverse gap-6 max-w-6xl mx-auto"}>
@@ -78,7 +90,7 @@ export default function LessonDetail() {
         <nav className="flex items-center gap-1.5 text-xs text-muted-foreground mb-4">
           <Link href="/courses" className="hover:text-primary transition-colors font-medium">מרכז הלמידה</Link>
           <ChevronRight className="h-3 w-3 rotate-180 shrink-0" />
-          <Link href={`/courses/${courseIndex}`} className="hover:text-primary transition-colors font-medium truncate max-w-[150px]">{course.title}</Link>
+          <Link href={`/courses/${id}`} className="hover:text-primary transition-colors font-medium truncate max-w-[150px]">{course.title}</Link>
           <ChevronRight className="h-3 w-3 rotate-180 shrink-0" />
           <span className="text-foreground font-semibold truncate max-w-[200px]">{lesson.title}</span>
         </nav>
@@ -97,7 +109,7 @@ export default function LessonDetail() {
           </div>
           <h1 className="font-display text-xl md:text-2xl font-bold leading-tight mb-2">{lesson.title}</h1>
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {lesson.duration}</span>
+            <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {lesson.duration_label}</span>
             <span className="flex items-center gap-1"><BookOpen className="h-3 w-3" /> {course.title}</span>
           </div>
         </div>
@@ -112,7 +124,7 @@ export default function LessonDetail() {
           </div>
           <div className="absolute bottom-4 left-4">
             <span className="bg-black/60 text-white text-xs font-medium px-3 py-1.5 rounded-xl backdrop-blur-sm flex items-center gap-1.5">
-              <Clock className="h-3 w-3" /> {lesson.duration}
+              <Clock className="h-3 w-3" /> {lesson.duration_label}
             </span>
           </div>
           <div className="absolute bottom-4 right-4">
@@ -127,12 +139,13 @@ export default function LessonDetail() {
         <div className="flex items-center gap-2 mb-5">
           {/* Watched toggle */}
           <button
-            onClick={toggleWatched}
+            onClick={handleToggleWatched}
+            disabled={isToggling}
             className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-all duration-300 cursor-pointer ${
               watched
                 ? "bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/30"
                 : "bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/30"
-            }`}
+            } ${isToggling ? "opacity-70" : ""}`}
           >
             {watched ? <CheckCircle2 className="h-4.5 w-4.5" /> : <Play className="h-4.5 w-4.5" />}
             {watched ? "נצפה" : "סיימתי לצפות"}
@@ -169,8 +182,8 @@ export default function LessonDetail() {
             <Button
               variant="ghost"
               size="sm"
-              disabled={prevLesson === null}
-              onClick={() => prevLesson !== null && router.push(`/courses/${courseIndex}/lesson/${prevLesson}`)}
+              disabled={!prevLesson}
+              onClick={() => prevLesson && router.push(`/courses/${id}/lesson/${prevLesson.id}`)}
               className="text-xs gap-1 cursor-pointer"
             >
               <ChevronRight className="h-3.5 w-3.5" />
@@ -179,8 +192,8 @@ export default function LessonDetail() {
             <Button
               variant="ghost"
               size="sm"
-              disabled={nextLesson === null}
-              onClick={() => nextLesson !== null && router.push(`/courses/${courseIndex}/lesson/${nextLesson}`)}
+              disabled={!nextLesson}
+              onClick={() => nextLesson && router.push(`/courses/${id}/lesson/${nextLesson.id}`)}
               className="text-xs gap-1 cursor-pointer"
             >
               הבא
@@ -195,9 +208,9 @@ export default function LessonDetail() {
             <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
             <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
               סיימת שיעור זה · {watchedCount}/{totalLessons} הושלמו
-              {nextLesson !== null && (
+              {nextLesson && (
                 <button
-                  onClick={() => router.push(`/courses/${courseIndex}/lesson/${nextLesson}`)}
+                  onClick={() => router.push(`/courses/${id}/lesson/${nextLesson.id}`)}
                   className="mr-2 text-primary hover:underline font-semibold cursor-pointer"
                 >
                   המשך לשיעור הבא →
@@ -248,7 +261,7 @@ export default function LessonDetail() {
         <Separator className="mb-6" />
 
         <CommentsSection
-          storageKey={`lesson-${courseIndex}-${lessonIndex}`}
+          storageKey={`lesson-${id}-${lessonId}`}
           initialComments={mockComments}
           contextLabel="שיעור"
           contextTitle={lesson.title}
@@ -284,17 +297,17 @@ export default function LessonDetail() {
             {/* Lessons list */}
             <div className="flex-1 overflow-y-auto scrollbar-thin p-2">
               <div className="space-y-0.5">
-                {course.lessons.map((l, i) => {
-                  const isActive = i === lessonIndex;
-                  const isCompleted = watchedIds.includes(i);
+                {lessons.map((l) => {
+                  const isActive = l.id === lessonId;
+                  const isLessonDone = isCompleted(l.id);
                   return (
                     <button
-                      key={i}
-                      onClick={() => router.push(`/courses/${courseIndex}/lesson/${i}`)}
+                      key={l.id}
+                      onClick={() => router.push(`/courses/${id}/lesson/${l.id}`)}
                       className={`w-full text-right flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[12px] transition-all duration-200 cursor-pointer ${
                         isActive
                           ? "bg-primary text-primary-foreground shadow-sm"
-                          : isCompleted
+                          : isLessonDone
                           ? "bg-emerald-500/10 text-foreground hover:bg-emerald-500/15"
                           : "text-muted-foreground hover:bg-secondary hover:text-foreground"
                       }`}
@@ -303,18 +316,18 @@ export default function LessonDetail() {
                       <div className={`h-6 w-6 rounded-full flex items-center justify-center shrink-0 text-[10px] font-bold ${
                         isActive
                           ? "bg-primary-foreground/20 text-primary-foreground"
-                          : isCompleted
+                          : isLessonDone
                           ? "bg-emerald-500 text-white"
                           : "bg-secondary text-muted-foreground"
                       }`}>
-                        {isCompleted && !isActive ? <CheckCircle2 className="h-3.5 w-3.5" /> : i + 1}
+                        {isLessonDone && !isActive ? <CheckCircle2 className="h-3.5 w-3.5" /> : l.order_index + 1}
                       </div>
 
                       {/* Title + duration */}
                       <div className="flex-1 min-w-0">
-                        <p className={`truncate font-medium leading-tight ${isActive ? "" : ""}`}>{l.title}</p>
+                        <p className={`truncate font-medium leading-tight`}>{l.title}</p>
                         <p className={`text-[10px] mt-0.5 ${isActive ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
-                          {l.duration}
+                          {l.duration_label}
                         </p>
                       </div>
 
@@ -336,7 +349,7 @@ export default function LessonDetail() {
                 variant="ghost"
                 size="sm"
                 className="w-full text-xs gap-1.5 cursor-pointer"
-                onClick={() => router.push(`/courses/${courseIndex}`)}
+                onClick={() => router.push(`/courses/${id}`)}
               >
                 <BookOpen className="h-3.5 w-3.5" />
                 חזרה לדף הקורס

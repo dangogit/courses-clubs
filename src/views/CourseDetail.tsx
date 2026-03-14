@@ -10,13 +10,15 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { initialCourses } from "@/data/courses";
-import { useWatchedProgress } from "@/hooks/useWatchedProgress";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useCourse } from "@/hooks/useCourse";
+import { useLessonProgress } from "@/hooks/useLessonProgress";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useRef } from "react";
 import confetti from "canvas-confetti";
 
-// --- Static "about" metadata per course index ---
+// --- Static "about" metadata per course order_index ---
+// Will move to DB when admin CMS is built (Phase 4)
 const courseAbout: Record<number, {
   level: string;
   audience: string;
@@ -148,35 +150,43 @@ function SidebarProgress({
   );
 }
 
+function CourseDetailSkeleton() {
+  return (
+    <div className="max-w-7xl mx-auto space-y-5">
+      <Skeleton className="h-4 w-48" />
+      <Skeleton className="h-52 w-full rounded-2xl" />
+      <div className="space-y-2">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <Skeleton key={i} className="h-16 w-full rounded-xl" />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function CourseDetail() {
   const { id } = useParams() as { id: string };
   const router = useRouter();
-  const courseIndex = parseInt(id || "0");
-  const course = initialCourses[courseIndex];
-  const { isWatched } = useWatchedProgress("course");
+  const { data: courseData, isLoading: courseLoading } = useCourse(id);
+  const { completedLessonIds, isCompleted: isLessonCompleted, isLoading: progressLoading } = useLessonProgress(id);
   const [showAllLessons, setShowAllLessons] = useState(false);
-  const celebrationKey = `course-celebrated-${courseIndex}`;
   const [showCelebration, setShowCelebration] = useState(false);
   const hasTriggered = useRef(false);
+  const prevProgressRef = useRef<number | null>(null);
 
-  // Derived values (safe even if course is undefined)
-  const lessonKey = `watched-lessons-${courseIndex}`;
-  const watchedLessons: number[] = (() => {
-    try { const raw = localStorage.getItem(lessonKey); return raw ? JSON.parse(raw) : []; }
-    catch { return []; }
-  })();
-  const lessonsCompleted = watchedLessons.length;
-  const totalLessons = course?.lessons.length ?? 0;
+  const course = courseData;
+  const lessons = course?.lessons ?? [];
+  const totalLessons = lessons.length;
+  const lessonsCompleted = lessons.filter((l) => completedLessonIds.has(l.id)).length;
   const progressPercent = totalLessons > 0 ? Math.round((lessonsCompleted / totalLessons) * 100) : 0;
 
   // Confetti + celebration dialog on 100%
   useEffect(() => {
-    if (!course || progressPercent !== 100 || hasTriggered.current) return;
-    const alreadyCelebrated = localStorage.getItem(celebrationKey);
-    if (!alreadyCelebrated) {
+    if (!course || progressLoading || progressPercent !== 100 || hasTriggered.current) return;
+    // Only trigger if we just reached 100% (not if we loaded at 100%)
+    if (prevProgressRef.current !== null && prevProgressRef.current < 100) {
       hasTriggered.current = true;
-      localStorage.setItem(celebrationKey, "1");
-      setShowCelebration(true);
+      queueMicrotask(() => setShowCelebration(true));
       const end = Date.now() + 3500;
       const frame = () => {
         confetti({ particleCount: 7, angle: 60, spread: 65, origin: { x: 0 }, colors: ["hsl(262,83%,58%)", "#fbbf24", "#34d399", "#f472b6"] });
@@ -185,7 +195,19 @@ export default function CourseDetail() {
       };
       frame();
     }
-  }, [progressPercent, celebrationKey, course]);
+    prevProgressRef.current = progressPercent;
+  }, [progressPercent, course, progressLoading]);
+
+  // Track previous progress for celebration detection
+  useEffect(() => {
+    if (!progressLoading) {
+      prevProgressRef.current = progressPercent;
+    }
+  }, [progressPercent, progressLoading]);
+
+  if (courseLoading || progressLoading) {
+    return <CourseDetailSkeleton />;
+  }
 
   if (!course) {
     return (
@@ -196,11 +218,11 @@ export default function CourseDetail() {
     );
   }
 
-  const nextLessonIndex = course.lessons.findIndex((_, i) => !watchedLessons.includes(i));
+  const nextLesson = lessons.find((l) => !completedLessonIds.has(l.id));
   const ctaLabel = lessonsCompleted === 0 ? "התחילו ללמוד" : "המשיכו ללמוד";
-  const about = courseAbout[courseIndex] ?? courseAbout[0];
+  const about = courseAbout[course.order_index] ?? courseAbout[0];
   const COLLAPSED_COUNT = 6;
-  const visibleLessons = showAllLessons ? course.lessons : course.lessons.slice(0, COLLAPSED_COUNT);
+  const visibleLessons = showAllLessons ? lessons : lessons.slice(0, COLLAPSED_COUNT);
   const hasMore = totalLessons > COLLAPSED_COUNT;
 
   return (
@@ -228,7 +250,7 @@ export default function CourseDetail() {
                 <div className="space-y-1">
                   <h2 className="text-2xl font-bold">כל הכבוד! 🏆</h2>
                   <p className="text-muted-foreground text-sm">
-                    סיימתם את הקורס <span className="font-semibold text-foreground">"{course.title}"</span> בהצלחה!
+                    סיימתם את הקורס <span className="font-semibold text-foreground">&ldquo;{course.title}&rdquo;</span> בהצלחה!
                   </p>
                 </div>
                 <div className="flex items-center gap-1.5 mt-1">
@@ -297,7 +319,7 @@ export default function CourseDetail() {
                 <p className="text-primary-foreground/75 text-sm lg:text-base mb-5 leading-relaxed max-w-xl">{course.description}</p>
                 <div className="flex flex-wrap items-center gap-5 text-xs text-primary-foreground/65">
                   <span className="flex items-center gap-1.5"><BookOpen className="h-3.5 w-3.5" /> {totalLessons} שיעורים</span>
-                  <span className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" /> {course.duration}</span>
+                  <span className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" /> {course.duration_label}</span>
                   <span className="flex items-center gap-1.5"><BarChart3 className="h-3.5 w-3.5" /> {about.level}</span>
                   <span className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> {about.audience}</span>
                 </div>
@@ -356,7 +378,7 @@ export default function CourseDetail() {
                     <p className="text-[11px] text-muted-foreground">שיעורים</p>
                   </div>
                   <div className="bg-muted/50 rounded-xl p-3 text-center">
-                    <p className="text-lg font-bold text-primary">{course.duration}</p>
+                    <p className="text-lg font-bold text-primary">{course.duration_label}</p>
                     <p className="text-[11px] text-muted-foreground">משך הקורס</p>
                   </div>
                 </div>
@@ -380,8 +402,8 @@ export default function CourseDetail() {
                 {progressPercent === 100 && "מדהים! סיימתם! 🏆"}
               </p>
             </div>
-            {nextLessonIndex !== -1 && (
-              <Button size="sm" onClick={() => router.push(`/courses/${courseIndex}/lesson/${nextLessonIndex}`)} className="gap-1.5">
+            {nextLesson && (
+              <Button size="sm" onClick={() => router.push(`/courses/${id}/lesson/${nextLesson.id}`)} className="gap-1.5">
                 <ArrowLeft className="h-3.5 w-3.5" />
                 {ctaLabel}
               </Button>
@@ -398,15 +420,15 @@ export default function CourseDetail() {
 
             <div className="space-y-2">
               {visibleLessons.map((lesson, i) => {
-                const completed = watchedLessons.includes(i);
-                const isNext = i === nextLessonIndex;
+                const completed = isLessonCompleted(lesson.id);
+                const isNext = nextLesson?.id === lesson.id;
                 return (
                   <motion.div
-                    key={i}
+                    key={lesson.id}
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.25, delay: 0.22 + i * 0.03 }}
-                    onClick={() => router.push(`/courses/${courseIndex}/lesson/${i}`)}
+                    onClick={() => router.push(`/courses/${id}/lesson/${lesson.id}`)}
                     className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-all duration-200 group hover:shadow-md ${
                       completed
                         ? "bg-accent/40 border-primary/20 hover:border-primary/35"
@@ -427,7 +449,7 @@ export default function CourseDetail() {
                         ? <CheckCircle className="h-4 w-4 text-primary-foreground" />
                         : isNext
                         ? <Play className="h-3.5 w-3.5 text-primary fill-primary" />
-                        : <span className="text-[10px] font-bold text-muted-foreground">{i + 1}</span>
+                        : <span className="text-[10px] font-bold text-muted-foreground">{lesson.order_index + 1}</span>
                       }
                     </div>
 
@@ -442,7 +464,7 @@ export default function CourseDetail() {
                     {/* Right side */}
                     <div className="flex items-center gap-2 shrink-0">
                       <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Clock className="h-3 w-3" />{lesson.duration}
+                        <Clock className="h-3 w-3" />{lesson.duration_label}
                       </span>
                       {isNext && (
                         <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
@@ -520,10 +542,10 @@ export default function CourseDetail() {
               {progressPercent === 100 && "מדהים! סיימתם! 🏆"}
             </p>
 
-            {nextLessonIndex !== -1 ? (
+            {nextLesson ? (
               <Button
                 className="w-full gap-2"
-                onClick={() => router.push(`/courses/${courseIndex}/lesson/${nextLessonIndex}`)}
+                onClick={() => router.push(`/courses/${id}/lesson/${nextLesson.id}`)}
               >
                 <ArrowLeft className="h-4 w-4" />
                 {ctaLabel}

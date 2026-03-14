@@ -4,13 +4,13 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   BookOpen, Clock, CheckCircle2, Sparkles, Zap, Brain,
-  BarChart3, Bot, Code2, Megaphone, Filter, Play, Lock,
-  GraduationCap, ChevronLeft, ArrowLeft,
+  BarChart3, Bot, Code2, Megaphone, Filter, Play,
+  GraduationCap, ChevronLeft,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
-import { useWatchedProgress } from "@/hooks/useWatchedProgress";
+import { Skeleton } from "@/components/ui/skeleton";
 import ProgressBanner from "@/components/ProgressBanner";
-import { initialCourses as coursesData } from "@/data/courses";
+import { useCourses } from "@/hooks/useCourses";
 import { motion } from "framer-motion";
 
 const courseIcons = [Brain, Sparkles, Bot, Megaphone, Zap, BarChart3, Code2];
@@ -38,19 +38,29 @@ const filterOptions = [
   { key: "חדשים", label: "חדשים" },
 ];
 
+function CoursesLoadingSkeleton() {
+  return (
+    <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <div key={i} className="bg-card rounded-2xl border border-border/50 overflow-hidden">
+          <Skeleton className="h-40 w-full rounded-none" />
+          <div className="p-4 space-y-3">
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-3 w-full" />
+            <div className="flex gap-4 pt-3 border-t border-border/40">
+              <Skeleton className="h-3 w-20" />
+              <Skeleton className="h-3 w-16" />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function Courses() {
   const router = useRouter();
-  const courses = coursesData.map((c) => ({
-    title: c.title,
-    lessons: c.lessons.length,
-    duration: c.duration,
-    progress: c.progress,
-    description: c.description,
-    tag: c.tag,
-  }));
-
-  const { isWatched, watchedCount, totalCount, progressPercent, encouragement } =
-    useWatchedProgress("course");
+  const { data: courses = [], isLoading, error } = useCourses();
   const [activeFilter, setActiveFilter] = useState("הכל");
 
   const filteredCourses = courses.filter((c) => {
@@ -63,6 +73,16 @@ export default function Courses() {
 
   const inProgressCount = courses.filter((c) => c.progress > 0 && c.progress < 100).length;
   const completedCount = courses.filter((c) => c.progress === 100).length;
+  const totalLessons = courses.reduce((sum, c) => sum + c.lessonCount, 0);
+  const completedLessons = courses.reduce((sum, c) => sum + c.completedCount, 0);
+  const overallProgress = totalLessons > 0 ? Math.round((completedLessons / totalLessons) * 100) : 0;
+
+  const encouragement =
+    overallProgress === 0 ? "בואו נתחיל!" :
+    overallProgress <= 30 ? "התחלה מצוינת! 🚀" :
+    overallProgress <= 70 ? "אתם בדרך הנכונה! 💪" :
+    overallProgress < 100 ? "כמעט סיימתם! 🔥" :
+    "מדהים! סיימתם הכל! 🏆";
 
   return (
     <div className="w-full max-w-7xl mx-auto">
@@ -96,11 +116,11 @@ export default function Courses() {
 
       {/* ── Progress Banner ── */}
       <ProgressBanner
-        watchedCount={watchedCount}
-        totalCount={totalCount}
-        progressPercent={progressPercent}
+        watchedCount={completedLessons}
+        totalCount={totalLessons}
+        progressPercent={overallProgress}
         encouragement={encouragement}
-        label="קורסים"
+        label="שיעורים"
       />
 
       {/* ── Filter Tabs ── */}
@@ -134,7 +154,14 @@ export default function Courses() {
       </div>
 
       {/* ── Grid ── */}
-      {filteredCourses.length === 0 ? (
+      {isLoading ? (
+        <CoursesLoadingSkeleton />
+      ) : error ? (
+        <div className="text-center py-20 bg-card/40 rounded-2xl border border-border/40">
+          <BookOpen className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
+          <p className="font-semibold text-muted-foreground">שגיאה בטעינת קורסים</p>
+        </div>
+      ) : filteredCourses.length === 0 ? (
         <div className="text-center py-20 bg-card/40 rounded-2xl border border-border/40">
           <BookOpen className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
           <p className="font-semibold text-muted-foreground">אין קורסים בקטגוריה זו</p>
@@ -142,21 +169,21 @@ export default function Courses() {
       ) : (
         <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
           {filteredCourses.map((c, filteredIndex) => {
-            const realIndex = courses.indexOf(c);
-            const CourseIcon = courseIcons[realIndex % courseIcons.length];
-            const gradient = courseGradients[realIndex % courseGradients.length];
+            const orderIdx = c.order_index;
+            const CourseIcon = courseIcons[orderIdx % courseIcons.length];
+            const gradient = courseGradients[orderIdx % courseGradients.length];
             const isCompleted = c.progress === 100;
             const isInProgress = c.progress > 0 && c.progress < 100;
             const tagMeta = c.tag ? tagStyles[c.tag] : null;
 
             return (
               <motion.div
-                key={realIndex}
+                key={c.id}
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.25, delay: filteredIndex * 0.05 }}
                 className="group bg-card rounded-2xl border border-border/50 overflow-hidden hover:border-primary/30 hover:shadow-[var(--shadow-elevated)] transition-all duration-300 cursor-pointer flex flex-col"
-                onClick={() => router.push(`/courses/${realIndex}`)}
+                onClick={() => router.push(`/courses/${c.id}`)}
               >
                 {/* Thumbnail */}
                 <div className={`relative h-40 bg-gradient-to-br ${gradient} flex items-center justify-center overflow-hidden shrink-0`}>
@@ -216,11 +243,11 @@ export default function Courses() {
                   <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground border-t border-border/40 pt-3">
                     <span className="flex items-center gap-1">
                       <BookOpen className="h-3 w-3" />
-                      {c.lessons} שיעורים
+                      {c.lessonCount} שיעורים
                     </span>
                     <span className="flex items-center gap-1">
                       <Clock className="h-3 w-3" />
-                      {c.duration}
+                      {c.duration_label}
                     </span>
 
                     {/* CTA link — push to the end */}
