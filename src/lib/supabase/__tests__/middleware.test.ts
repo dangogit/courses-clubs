@@ -106,5 +106,23 @@ describe("updateSession", () => {
       expect(response.status).toBe(307);
       expect(response.headers.get("location")).toContain("/login");
     });
+
+    it("preserves query string in next param", async () => {
+      const response = await updateSession(
+        makeRequest("/courses?filter=ai&page=2")
+      );
+
+      expect(response.status).toBe(307);
+      expect(response.headers.get("location")).toBe(
+        "http://localhost:3000/login?next=%2Fcourses%3Ffilter%3Dai%26page%3D2"
+      );
+    });
+
+    it("redirects from /login/admin (not in public list)", async () => {
+      const response = await updateSession(makeRequest("/login/admin"));
+
+      expect(response.status).toBe(307);
+      expect(response.headers.get("location")).toContain("/login?next=");
+    });
   });
 });

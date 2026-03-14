@@ -37,14 +37,15 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const pathname = request.nextUrl.pathname;
-  const isPublic = PUBLIC_ROUTES.some(
-    (route) => pathname === route || pathname.startsWith(route + "/")
-  );
+  const isPublic = PUBLIC_ROUTES.includes(pathname);
 
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
-    url.searchParams.set("next", pathname);
+    const search = request.nextUrl.search;
+    // Clear original query params so only `next` appears on /login
+    url.search = "";
+    url.searchParams.set("next", search ? `${pathname}${search}` : pathname);
     return NextResponse.redirect(url);
   }
 
