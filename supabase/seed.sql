@@ -30,7 +30,7 @@ INSERT INTO courses (title, description, tag, duration_label, min_tier_level, or
   ('AI לשיווק דיגיטלי',           'נצלו כלי AI להצלחה בשיווק דיגיטלי',                    NULL,      '5 שעות',  0, 3, true),
   ('כלי No-Code AI',              'השתמשו ב-AI חזק בלי לכתוב שורת קוד',                   'הושלם',   '3 שעות',  0, 4, true),
   ('למידת מכונה מתקדמת',          'צלילה עמוקה לאלגוריתמים ורשתות נוירונים',               'מתקדם',   '12 שעות', 0, 5, true)
-ON CONFLICT DO NOTHING;
+ON CONFLICT (order_index) DO NOTHING;
 
 -- =============================================================================
 -- Lessons (matches src/data/courses.ts lesson arrays)
@@ -41,6 +41,9 @@ DO $$
 DECLARE
   c_id uuid;
 BEGIN
+
+-- Clean existing lessons to avoid duplicates on re-seed
+DELETE FROM lessons WHERE course_id IN (SELECT id FROM courses);
 
 -- Course 0: יסודות AI
 SELECT id INTO c_id FROM courses WHERE order_index = 0 LIMIT 1;

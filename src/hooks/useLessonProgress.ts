@@ -30,27 +30,27 @@ export function useLessonProgress(courseId: string | undefined) {
 
       return new Set(progress?.map((p) => p.lesson_id) ?? []);
     },
-    select: (data) => data,
   });
 
   const completedLessonIds = query.data ?? new Set<string>();
 
   const toggleMutation = useMutation({
     mutationFn: async (lessonId: string) => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
       const isCompleted = completedLessonIds.has(lessonId);
 
       if (isCompleted) {
         const { error } = await supabase
           .from("lesson_progress")
           .delete()
-          .eq("lesson_id", lessonId);
+          .eq("lesson_id", lessonId)
+          .eq("user_id", user.id);
         if (error) throw error;
       } else {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-        if (!user) throw new Error("Not authenticated");
-
         const { error } = await supabase
           .from("lesson_progress")
           .insert({ user_id: user.id, lesson_id: lessonId });

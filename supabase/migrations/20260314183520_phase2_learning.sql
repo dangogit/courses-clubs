@@ -13,7 +13,7 @@ CREATE TABLE courses (
   tag             text,
   duration_label  text,
   min_tier_level  int NOT NULL DEFAULT 0,
-  order_index     int NOT NULL DEFAULT 0,
+  order_index     int NOT NULL DEFAULT 0 UNIQUE,
   is_published    bool NOT NULL DEFAULT false,
   created_at      timestamptz NOT NULL DEFAULT now()
 );
@@ -50,7 +50,7 @@ CREATE TABLE lesson_progress (
 -- =============================================================================
 
 CREATE INDEX idx_courses_order ON courses (order_index);
-CREATE INDEX idx_lessons_course_order ON lessons (course_id, order_index);
+CREATE UNIQUE INDEX idx_lessons_course_order ON lessons (course_id, order_index);
 CREATE INDEX idx_lesson_progress_user ON lesson_progress (user_id);
 
 -- =============================================================================
@@ -94,3 +94,8 @@ CREATE POLICY "lesson_progress_insert_owner" ON lesson_progress
 CREATE POLICY "lesson_progress_delete_owner" ON lesson_progress
   FOR DELETE TO authenticated
   USING (auth.uid() = user_id);
+
+-- No UPDATE — progress is toggled via INSERT/DELETE only
+CREATE POLICY "lesson_progress_update_deny" ON lesson_progress
+  FOR UPDATE TO authenticated
+  USING (false);
