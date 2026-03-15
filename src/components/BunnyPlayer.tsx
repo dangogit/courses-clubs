@@ -16,6 +16,7 @@ interface BunnyPlayerProps {
   thumbnailUrl?: string;
   theaterMode?: boolean;
   durationLabel?: string;
+  onPlaceholderClick?: () => void;
 }
 
 /**
@@ -29,6 +30,7 @@ export default function BunnyPlayer({
   thumbnailUrl,
   theaterMode = false,
   durationLabel,
+  onPlaceholderClick,
 }: BunnyPlayerProps) {
   const wrapperClass = theaterMode
     ? "bg-black/90 -mx-3 sm:-mx-4 px-0 mb-4"
@@ -37,6 +39,8 @@ export default function BunnyPlayer({
   const containerClass = `w-full aspect-video ${
     theaterMode ? "rounded-none" : "rounded-2xl mb-4"
   } overflow-hidden shadow-lg`;
+
+  const placeholderCursorClass = onPlaceholderClick ? "cursor-pointer" : "";
 
   if (videoUrl && isValidBunnyUrl(videoUrl)) {
     return (
@@ -61,7 +65,8 @@ export default function BunnyPlayer({
     return (
       <div className={wrapperClass}>
         <div
-          className={`${containerClass} relative overflow-hidden bg-muted group`}
+          className={`${containerClass} relative overflow-hidden bg-muted group ${placeholderCursorClass}`}
+          onClick={onPlaceholderClick}
         >
           <img
             src={thumbnailUrl}
@@ -93,7 +98,8 @@ export default function BunnyPlayer({
   return (
     <div className={wrapperClass}>
       <div
-        className={`${containerClass} gradient-hero relative flex items-center justify-center group cursor-pointer`}
+        className={`${containerClass} gradient-hero relative flex items-center justify-center group ${placeholderCursorClass}`}
+        onClick={onPlaceholderClick}
       >
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_75%,hsla(0,0%,100%,0.12),transparent_50%)]" />
         <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />

@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { describe, it, expect, vi } from "vitest";
+import { render, screen, fireEvent } from "@testing-library/react";
 import BunnyPlayer from "../BunnyPlayer";
 
 describe("BunnyPlayer", () => {
@@ -89,5 +89,23 @@ describe("BunnyPlayer", () => {
     expect(img!.getAttribute("src")).toBe("https://example.com/thumb.jpg");
     expect(screen.getByText("לחצו לצפייה")).toBeDefined();
     expect(screen.getByText("10 דק׳")).toBeDefined();
+  });
+
+  it("calls onPlaceholderClick when placeholder is clicked", () => {
+    const handleClick = vi.fn();
+    render(
+      <BunnyPlayer videoUrl={null} onPlaceholderClick={handleClick} />
+    );
+
+    const placeholder = screen.getByText("לחצו לצפייה").closest("[class*='aspect-video']") as HTMLElement;
+    fireEvent.click(placeholder);
+    expect(handleClick).toHaveBeenCalledOnce();
+  });
+
+  it("placeholder has no cursor-pointer when onPlaceholderClick is absent", () => {
+    const { container } = render(<BunnyPlayer videoUrl={null} />);
+
+    const placeholder = container.querySelector("[class*='aspect-video']") as HTMLElement;
+    expect(placeholder.className).not.toContain("cursor-pointer");
   });
 });
