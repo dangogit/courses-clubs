@@ -62,16 +62,16 @@ export default function BunnyPlayer({
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_75%,hsla(0,0%,100%,0.12),transparent_50%)]" />
         <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
         <div className="relative h-20 w-20 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center group-hover:scale-110 group-hover:bg-black/60 transition-all duration-300 shadow-2xl">
-          <Play className="h-9 w-9 text-white mr-[-3px]" />
+          <Play className="h-9 w-9 text-white me-[-3px]" />
         </div>
         {durationLabel && (
-          <div className="absolute bottom-4 left-4">
+          <div className="absolute bottom-4 start-4">
             <span className="bg-black/60 text-white text-xs font-medium px-3 py-1.5 rounded-xl backdrop-blur-sm flex items-center gap-1.5">
               <Clock className="h-3 w-3" /> {durationLabel}
             </span>
           </div>
         )}
-        <div className="absolute bottom-4 right-4">
+        <div className="absolute bottom-4 end-4">
           <span className="bg-black/60 text-white text-xs font-medium px-3 py-1.5 rounded-xl backdrop-blur-sm flex items-center gap-1.5">
             <Play className="h-3 w-3 fill-current" /> לחצו לצפייה
           </span>
