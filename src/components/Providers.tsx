@@ -14,14 +14,14 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <ClubThemeProvider>
       <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
-        <AdminProvider>
-          <QueryClientProvider client={queryClient}>
+        <QueryClientProvider client={queryClient}>
+          <AdminProvider>
             <TooltipProvider>
               <Toaster />
               {children}
             </TooltipProvider>
-          </QueryClientProvider>
-        </AdminProvider>
+          </AdminProvider>
+        </QueryClientProvider>
       </ThemeProvider>
     </ClubThemeProvider>
   );
