@@ -39,10 +39,14 @@ test.describe("Login page", () => {
     await page.goto("/login?error=ההתחברות נכשלה");
     await expect(page.locator("[data-sonner-toast]")).toBeVisible();
   });
+});
 
+// Magic link tests run serially — local GoTrue stalls under parallel OTP requests
+test.describe.serial("Magic Link tests", () => {
   test("sends magic link and shows success message", async ({ page }) => {
     const email = `login-test-${Date.now()}@courses-clubs.local`;
 
+    await page.goto("/login");
     await page.getByLabel("אימייל").fill(email);
     await page.getByRole("button", { name: /שלח קישור התחברות/ }).click();
 
@@ -50,14 +54,12 @@ test.describe("Login page", () => {
       timeout: 30_000,
     });
   });
-});
-
-test.describe("Magic Link auth flow", () => {
-  const email = "e2e-magiclink-flow@courses-clubs.local";
 
   test("full flow: send magic link → click link → authenticated", async ({
     page,
   }) => {
+    const email = "e2e-magiclink-flow@courses-clubs.local";
+
     // Create user via admin API so the magic link works
     const admin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -83,7 +85,7 @@ test.describe("Magic Link auth flow", () => {
     await page.getByRole("button", { name: /שלח קישור התחברות/ }).click();
 
     await expect(page.getByText("שלחנו קישור התחברות")).toBeVisible({
-      timeout: 10_000,
+      timeout: 30_000,
     });
 
     // Fetch magic link from Mailpit and extract auth code
@@ -91,7 +93,7 @@ test.describe("Magic Link auth flow", () => {
 
     // Navigate to our auth callback with the extracted code
     await page.goto(`/auth/callback?code=${code}`);
-    await page.waitForURL("/", { timeout: 15_000 });
+    await page.waitForURL("/", { timeout: 30_000 });
 
     // Should be on the home page (authenticated)
     await expect(page).toHaveURL("/");
