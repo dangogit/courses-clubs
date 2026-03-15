@@ -27,6 +27,7 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import CommentsSection, { type Comment } from "@/components/CommentsSection";
 import { getTagColor } from "@/lib/tagColors";
+import { formatHebDate } from "@/lib/formatDate";
 
 const mockComments: Comment[] = [
   {
@@ -55,13 +56,6 @@ const mockComments: Comment[] = [
   { id: 3, author: "דני ברק", avatar: "dani", text: "מחכה לחלק הבא! 🔥", date: "לפני שבוע", likes: 7, replies: [] },
 ];
 
-/** Format a date string (ISO or YYYY-MM-DD) to Hebrew locale */
-function formatHebDate(dateStr: string | null): string {
-  if (!dateStr) return "";
-  const d = new Date(dateStr);
-  return d.toLocaleDateString("he-IL", { day: "numeric", month: "short", year: "numeric" });
-}
-
 export default function RecordingDetailPage() {
   const { id } = useParams() as { id: string };
   const router = useRouter();
@@ -82,7 +76,7 @@ export default function RecordingDetailPage() {
 
   const { isWatched, toggleWatched, watchedCount, totalCount } = useWatchedProgress("recording", allRecordings.length);
   const watched = isWatched(id);
-  const remaining = totalCount - (watchedCount + (watched ? 0 : 1));
+  const remaining = Math.max(0, totalCount - (watchedCount + (watched ? 0 : 1)));
 
   const [bookmarked, setBookmarked] = useState(false);
   const [theaterMode, setTheaterMode] = useState(false);

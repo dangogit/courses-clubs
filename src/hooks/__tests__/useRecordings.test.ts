@@ -73,7 +73,8 @@ describe("useRecordings", () => {
       makeRecording({ id: "r1", order_index: 0 }),
       makeRecording({ id: "r2", order_index: 1, title: "Second" }),
     ];
-    mockFrom.mockReturnValueOnce(chainMock(recordings));
+    const chain = chainMock(recordings);
+    mockFrom.mockReturnValueOnce(chain);
 
     const { result } = renderHook(() => useRecordings(), {
       wrapper: createWrapper(),
@@ -84,6 +85,7 @@ describe("useRecordings", () => {
     expect(result.current.data).toHaveLength(2);
     expect(result.current.data![0].id).toBe("r1");
     expect(result.current.data![1].id).toBe("r2");
+    expect(chain.eq).toHaveBeenCalledWith("is_published", true);
   });
 
   it("returns empty array when no recordings exist", async () => {
@@ -116,7 +118,8 @@ describe("useRecording", () => {
 
   it("fetches a single recording by ID", async () => {
     const recording = makeRecording({ id: "rec-123" });
-    mockFrom.mockReturnValueOnce(singleChainMock(recording));
+    const chain = singleChainMock(recording);
+    mockFrom.mockReturnValueOnce(chain);
 
     const { result } = renderHook(() => useRecording("rec-123"), {
       wrapper: createWrapper(),
@@ -126,6 +129,8 @@ describe("useRecording", () => {
 
     expect(result.current.data?.id).toBe("rec-123");
     expect(result.current.data?.title).toBe("Test Recording");
+    expect(chain.eq).toHaveBeenCalledWith("id", "rec-123");
+    expect(chain.eq).toHaveBeenCalledWith("is_published", true);
   });
 
   it("does not fetch when id is undefined", async () => {

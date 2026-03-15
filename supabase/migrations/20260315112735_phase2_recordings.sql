@@ -28,7 +28,6 @@ CREATE TABLE recordings (
 -- 2. Indexes
 -- =============================================================================
 
-CREATE INDEX idx_recordings_order ON recordings (order_index);
 CREATE INDEX idx_recordings_published ON recordings (is_published) WHERE is_published = true;
 CREATE INDEX idx_recordings_tags ON recordings USING GIN (tags);
 
@@ -38,7 +37,7 @@ CREATE INDEX idx_recordings_tags ON recordings USING GIN (tags);
 
 ALTER TABLE recordings ENABLE ROW LEVEL SECURITY;
 
--- SELECT: any authenticated user can read published recordings
+-- SELECT: any authenticated user can read recordings (client filters by is_published)
 CREATE POLICY "recordings_select_authenticated" ON recordings
   FOR SELECT TO authenticated
   USING (true);

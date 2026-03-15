@@ -20,6 +20,7 @@ export function useCourse(courseId: string | undefined) {
         .from("courses")
         .select("*, lessons(*)")
         .eq("id", courseId!)
+        .eq("is_published", true)
         .single();
 
       if (error) throw error;

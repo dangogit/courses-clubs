@@ -39,6 +39,7 @@ export function useRecording(id: string | undefined) {
         .from("recordings")
         .select("*")
         .eq("id", id)
+        .eq("is_published", true)
         .single();
 
       if (error) throw error;

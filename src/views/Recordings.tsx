@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { CONTENT_CATEGORIES } from "@/lib/tagColors";
+import { formatHebDate } from "@/lib/formatDate";
 
 const ITEMS_PER_PAGE = 12;
 
@@ -38,13 +39,6 @@ const gradients = [
 
 function getGradient(index: number) {
   return gradients[index % gradients.length];
-}
-
-/** Format a date string (ISO or YYYY-MM-DD) to Hebrew locale */
-function formatHebDate(dateStr: string | null): string {
-  if (!dateStr) return "";
-  const d = new Date(dateStr);
-  return d.toLocaleDateString("he-IL", { day: "numeric", month: "short", year: "numeric" });
 }
 
 interface FilterDef {
@@ -138,7 +132,7 @@ export default function RecordingsPage() {
           <div>
             <h1 className="font-display text-2xl font-bold leading-none">הקלטות</h1>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {recordings.length} הקלטות · {watchedCount} נצפו
+              {isLoading ? "טוען..." : `${recordings.length} הקלטות · ${watchedCount} נצפו`}
             </p>
           </div>
         </div>
@@ -263,7 +257,7 @@ export default function RecordingsPage() {
         </div>
       ) : !isLoading && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {visibleRecordings.map((r, i) => {
+          {visibleRecordings.map((r) => {
             const watched = isWatched(r.id);
             const catColor = getTagColor(r.tags[0]);
             const gradient = getGradient(r.order_index);

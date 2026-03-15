@@ -77,8 +77,8 @@ ClubThemeProvider → ThemeProvider (dark/light) → AdminProvider → QueryClie
 | `src/components/ui/` | 57 shadcn/ui Base UI components |
 | `src/config/club.ts` | Club identity + feature flags — customize here |
 | `src/data/` | Mock data arrays (courses, events, groups, agents, recordings, levels) |
-| `src/hooks/` | `useProfileCompletion`, `useWatchedProgress`, `use-mobile` |
-| `src/contexts/AdminContext.tsx` | Admin mode toggle |
+| `src/hooks/` | `useProfileCompletion`, `useWatchedProgress`, `useUserRole`, `use-mobile` |
+| `src/contexts/AdminContext.tsx` | Admin context — `isAdminUser` (DB role) + `isAdmin` (edit-mode toggle) |
 | `src/lib/tagColors.ts` | Category tag → color + icon mapping |
 | `docs/` | Architecture, schema, forking guide, roadmap |
 
