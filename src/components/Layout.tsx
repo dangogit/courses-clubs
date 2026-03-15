@@ -29,6 +29,7 @@ import {
   SidebarSeparator, useSidebar,
 } from "@/components/ui/sidebar";
 import { club } from "@/config/club";
+import { useAdmin } from "@/contexts/AdminContext";
 
 /* ───────── Data ───────── */
 
@@ -97,6 +98,7 @@ interface LayoutProps {
 
 function AppSidebar() {
   const pathname = usePathname();
+  const { isAdminUser } = useAdmin();
 
   return (
     <Sidebar
@@ -184,24 +186,26 @@ function AppSidebar() {
 
         <SidebarSeparator className="my-2 opacity-50" />
 
-        {/* Admin link */}
-        <SidebarGroup className="px-2 py-0 group-data-[collapsible=icon]:px-0">
-          <SidebarGroupContent>
-            <SidebarMenu className="group-data-[collapsible=icon]:items-center">
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  render={<Link href="/admin" />}
-                  isActive={pathname === "/admin"}
-                  tooltip="פאנל ניהול"
-                  className="rounded-xl h-9 cursor-pointer transition-all duration-200 data-[active=true]:bg-primary data-[active=true]:text-primary-foreground data-[active=true]:shadow-sm hover:bg-sidebar-accent/60"
-                >
-                  <Shield className="!h-[18px] !w-[18px]" />
-                  <span className="font-medium text-[13px]">פאנל ניהול</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {/* Admin link — only visible to admin/moderator users */}
+        {isAdminUser && (
+          <SidebarGroup className="px-2 py-0 group-data-[collapsible=icon]:px-0">
+            <SidebarGroupContent>
+              <SidebarMenu className="group-data-[collapsible=icon]:items-center">
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    render={<Link href="/admin" />}
+                    isActive={pathname === "/admin"}
+                    tooltip="פאנל ניהול"
+                    className="rounded-xl h-9 cursor-pointer transition-all duration-200 data-[active=true]:bg-primary data-[active=true]:text-primary-foreground data-[active=true]:shadow-sm hover:bg-sidebar-accent/60"
+                  >
+                    <Shield className="!h-[18px] !w-[18px]" />
+                    <span className="font-medium text-[13px]">פאנל ניהול</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
 
       {/* ── Footer — premium card ── */}
