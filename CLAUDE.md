@@ -139,7 +139,7 @@ Allowed external image hosts (configured in `next.config.ts`): `dicebear.com`, `
 |---|---|
 | Supabase Auth | Google OAuth + Magic Link |
 | Supabase Storage | Profile images, post images |
-| Bunny.net | Video streaming (courses, recordings, tutorials) — `bunny_video_id` field in lessons |
+| Bunny.net | Video streaming (courses, recordings, tutorials) — `video_url` field in lessons |
 | Cardcom | Israeli payment processor — terminal ID 157696, tokenized recurring billing |
 | Resend | Transactional email (event reminders, payment notifications) |
 

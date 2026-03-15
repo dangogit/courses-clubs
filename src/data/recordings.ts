@@ -11,6 +11,7 @@ export interface Recording {
   avatar: string;
   views: number;
   gradient: string;
+  videoUrl?: string;
 }
 
 const gradients = [
