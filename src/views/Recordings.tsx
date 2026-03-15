@@ -10,27 +10,48 @@ import {
   CheckCircle,
   TrendingUp,
   X,
+  Loader2,
 } from "lucide-react";
 import { useWatchedProgress } from "@/hooks/useWatchedProgress";
+import { useRecordings } from "@/hooks/useRecordings";
 import { getTagColor, getCategoryIcon } from "@/lib/tagColors";
 import ProgressBanner from "@/components/ProgressBanner";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
-import { initialRecordings, type Recording } from "@/data/recordings";
-import { PLATFORM_CATEGORIES, CONTENT_CATEGORIES } from "@/lib/tagColors";
+import { CONTENT_CATEGORIES } from "@/lib/tagColors";
 
 const ITEMS_PER_PAGE = 12;
 
-interface FilterDef {
-  key: string;
-  type: "all" | "sort" | "speaker" | "category";
-  icon?: React.ReactNode;
+const gradients = [
+  "from-[hsl(195,100%,35%)] to-[hsl(210,90%,45%)]",
+  "from-[hsl(250,70%,45%)] to-[hsl(280,60%,50%)]",
+  "from-[hsl(160,65%,35%)] to-[hsl(195,80%,40%)]",
+  "from-[hsl(340,70%,45%)] to-[hsl(20,80%,50%)]",
+  "from-[hsl(30,80%,45%)] to-[hsl(45,90%,50%)]",
+  "from-[hsl(195,90%,40%)] to-[hsl(250,70%,50%)]",
+  "from-[hsl(270,60%,50%)] to-[hsl(310,70%,55%)]",
+  "from-[hsl(140,60%,35%)] to-[hsl(170,70%,40%)]",
+];
+
+function getGradient(index: number) {
+  return gradients[index % gradients.length];
 }
 
+/** Format a date string (ISO or YYYY-MM-DD) to Hebrew locale */
+function formatHebDate(dateStr: string | null): string {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  return d.toLocaleDateString("he-IL", { day: "numeric", month: "short", year: "numeric" });
+}
+
+interface FilterDef {
+  key: string;
+  type: "all" | "sort" | "category";
+  icon?: React.ReactNode;
+}
 
 const staticFilters: FilterDef[] = [
   { key: "הכל", type: "all" },
@@ -38,12 +59,10 @@ const staticFilters: FilterDef[] = [
   ...CONTENT_CATEGORIES.map((cat) => ({ key: cat, type: "category" as const })),
 ];
 
-// categoryColors removed — using getTagColor() from tagColors.ts
-
 export default function RecordingsPage() {
-  const recordings = initialRecordings;
+  const { data: recordings = [], isLoading, error } = useRecordings();
   const { isWatched, watchedCount, totalCount, progressPercent, encouragement } =
-    useWatchedProgress("recording");
+    useWatchedProgress("recording", recordings.length);
   const [activeFilter, setActiveFilter] = useState("הכל");
   const [searchQuery, setSearchQuery] = useState("");
   const [displayCount, setDisplayCount] = useState(ITEMS_PER_PAGE);
@@ -55,10 +74,8 @@ export default function RecordingsPage() {
   const processedRecordings = useMemo(() => {
     let result = [...recordings];
 
-  if (activeFilterObj.type === "category") {
-      result = result.filter((r) => r.categories.includes(activeFilter));
-    } else if (activeFilterObj.type === "speaker") {
-      result = result.filter((r) => r.speaker === activeFilter);
+    if (activeFilterObj.type === "category") {
+      result = result.filter((r) => r.tags.includes(activeFilter));
     }
 
     if (searchQuery.trim()) {
@@ -66,16 +83,15 @@ export default function RecordingsPage() {
       result = result.filter(
         (r) =>
           r.title.toLowerCase().includes(q) ||
-          r.description.toLowerCase().includes(q) ||
-          r.speaker.toLowerCase().includes(q)
+          (r.description ?? "").toLowerCase().includes(q) ||
+          (r.speaker ?? "").toLowerCase().includes(q)
       );
     }
 
     if (activeFilter === "פופולרי") {
-      result.sort((a, b) => b.views - a.views);
-    } else {
-      result.sort((a, b) => b.dateAdded - a.dateAdded);
+      result.sort((a, b) => b.view_count - a.view_count);
     }
+    // Default order from DB is order_index — no re-sort needed
 
     return result;
   }, [recordings, activeFilter, searchQuery, activeFilterObj.type]);
@@ -102,6 +118,15 @@ export default function RecordingsPage() {
     return () => observer.disconnect();
   }, [loadMore]);
 
+  if (error) {
+    return (
+      <div className="w-full max-w-6xl mx-auto text-center py-20">
+        <p className="text-destructive font-semibold">שגיאה בטעינת ההקלטות</p>
+        <p className="text-xs text-muted-foreground mt-1">נסו לרענן את הדף</p>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full max-w-6xl mx-auto">
       {/* Header */}
@@ -113,7 +138,7 @@ export default function RecordingsPage() {
           <div>
             <h1 className="font-display text-2xl font-bold leading-none">הקלטות</h1>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {totalCount} הקלטות · {watchedCount} נצפו
+              {recordings.length} הקלטות · {watchedCount} נצפו
             </p>
           </div>
         </div>
@@ -177,8 +202,16 @@ export default function RecordingsPage() {
       {/* Results info */}
       <div className="flex items-center justify-between mb-4">
         <p className="text-xs text-muted-foreground">
-          מציג <span className="font-semibold text-foreground">{visibleRecordings.length}</span> מתוך{" "}
-          <span className="font-semibold text-foreground">{processedRecordings.length}</span> הקלטות
+          {isLoading ? (
+            <span className="flex items-center gap-1.5">
+              <Loader2 className="h-3 w-3 animate-spin" /> טוען הקלטות...
+            </span>
+          ) : (
+            <>
+              מציג <span className="font-semibold text-foreground">{visibleRecordings.length}</span> מתוך{" "}
+              <span className="font-semibold text-foreground">{processedRecordings.length}</span> הקלטות
+            </>
+          )}
         </p>
         {searchQuery && (
           <Badge variant="secondary" className="text-xs rounded-full gap-1">
@@ -190,8 +223,31 @@ export default function RecordingsPage() {
         )}
       </div>
 
+      {/* Loading skeleton */}
+      {isLoading && (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="bg-card/80 rounded-2xl border border-border/50 overflow-hidden">
+              <Skeleton className="h-40 w-full rounded-none" />
+              <div className="p-4 space-y-2">
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-3 w-full" />
+                <Skeleton className="h-3 w-5/6" />
+                <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border/40">
+                  <Skeleton className="h-7 w-7 rounded-full" />
+                  <div className="flex-1 space-y-1">
+                    <Skeleton className="h-3 w-20" />
+                    <Skeleton className="h-2 w-14" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Recordings Grid */}
-      {visibleRecordings.length === 0 ? (
+      {!isLoading && visibleRecordings.length === 0 ? (
         <div className="text-center py-20 bg-card/40 rounded-2xl border border-border/40">
           <div className="h-16 w-16 rounded-2xl bg-muted/50 flex items-center justify-center mx-auto mb-3">
             <Search className="h-8 w-8 text-muted-foreground/50" />
@@ -205,22 +261,22 @@ export default function RecordingsPage() {
             נקה סינון
           </button>
         </div>
-      ) : (
+      ) : !isLoading && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {visibleRecordings.map((r, i) => {
-            const realIndex = recordings.indexOf(r);
-            const watched = isWatched(realIndex);
-            const catColor = getTagColor(r.categories[0]);
+            const watched = isWatched(r.id);
+            const catColor = getTagColor(r.tags[0]);
+            const gradient = getGradient(r.order_index);
 
             return (
               <div
-                key={`${r.title}-${r.dateAdded}`}
+                key={r.id}
                 className="bg-card/80 backdrop-blur-sm rounded-2xl card-shadow border border-border/50 overflow-hidden hover:elevated-shadow hover:border-primary/30 transition-all duration-300 cursor-pointer group relative"
-                onClick={() => router.push(`/recordings/${realIndex}`)}
+                onClick={() => router.push(`/recordings/${r.id}`)}
               >
                 {/* Thumbnail */}
                 <div
-                  className={`h-40 bg-gradient-to-br ${r.gradient} relative flex items-center justify-center overflow-hidden`}
+                  className={`h-40 bg-gradient-to-br ${gradient} relative flex items-center justify-center overflow-hidden`}
                 >
                   <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_70%,hsla(0,0%,100%,0.12),transparent_55%)]" />
                   <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
@@ -233,13 +289,15 @@ export default function RecordingsPage() {
                   {/* Duration badge */}
                   <span className="absolute bottom-2 left-2 bg-black/60 text-white text-[10px] font-medium px-2 py-1 rounded-lg backdrop-blur-sm flex items-center gap-1">
                     <Clock className="h-2.5 w-2.5" />
-                    {r.duration}
+                    {r.duration_label}
                   </span>
 
                   {/* Category badge */}
-                  <span className={`absolute top-2 left-2 text-[10px] font-semibold px-2 py-0.5 rounded-full ${catColor}`}>
-                    {r.categories[0]}
-                  </span>
+                  {r.tags[0] && (
+                    <span className={`absolute top-2 left-2 text-[10px] font-semibold px-2 py-0.5 rounded-full ${catColor}`}>
+                      {r.tags[0]}
+                    </span>
+                  )}
 
                   {/* Watched checkmark */}
                   {watched && (
@@ -262,9 +320,9 @@ export default function RecordingsPage() {
                   </p>
 
                   {/* Category pills */}
-                  {r.categories.length > 1 && (
+                  {r.tags.length > 1 && (
                     <div className="flex flex-wrap gap-1 mt-2">
-                      {r.categories.slice(0, 2).map((cat) => (
+                      {r.tags.slice(0, 2).map((cat) => (
                         <span
                           key={cat}
                           className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${getTagColor(cat)}`}
@@ -278,8 +336,8 @@ export default function RecordingsPage() {
                   {/* Footer */}
                   <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border/40">
                     <Avatar className="h-7 w-7 ring-2 ring-primary/10 shrink-0">
-                      <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${r.avatar}`} />
-                      <AvatarFallback className="text-[9px] font-bold">{r.speaker[0]}</AvatarFallback>
+                      <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${r.speaker_avatar}`} />
+                      <AvatarFallback className="text-[9px] font-bold">{r.speaker?.[0]}</AvatarFallback>
                     </Avatar>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-medium leading-none truncate">
@@ -287,12 +345,12 @@ export default function RecordingsPage() {
                       </p>
                       <div className="flex items-center gap-1 text-[10px] text-muted-foreground mt-0.5">
                         <Calendar className="h-2.5 w-2.5" />
-                        <span>{r.date}</span>
+                        <span>{formatHebDate(r.recorded_at)}</span>
                       </div>
                     </div>
                     <span className="flex items-center gap-1 text-[10px] text-muted-foreground shrink-0">
                       <Eye className="h-3 w-3" />
-                      {r.views.toLocaleString()}
+                      {r.view_count.toLocaleString()}
                     </span>
                   </div>
                 </div>

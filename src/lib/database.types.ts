@@ -223,6 +223,63 @@ export type Database = {
           },
         ]
       }
+      recordings: {
+        Row: {
+          created_at: string
+          description: string | null
+          duration_label: string | null
+          duration_minutes: number | null
+          id: string
+          is_published: boolean
+          min_tier_level: number
+          order_index: number
+          recorded_at: string | null
+          speaker: string | null
+          speaker_avatar: string | null
+          tags: string[]
+          thumbnail_url: string | null
+          title: string
+          video_url: string | null
+          view_count: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          duration_label?: string | null
+          duration_minutes?: number | null
+          id?: string
+          is_published?: boolean
+          min_tier_level?: number
+          order_index?: number
+          recorded_at?: string | null
+          speaker?: string | null
+          speaker_avatar?: string | null
+          tags?: string[]
+          thumbnail_url?: string | null
+          title: string
+          video_url?: string | null
+          view_count?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          duration_label?: string | null
+          duration_minutes?: number | null
+          id?: string
+          is_published?: boolean
+          min_tier_level?: number
+          order_index?: number
+          recorded_at?: string | null
+          speaker?: string | null
+          speaker_avatar?: string | null
+          tags?: string[]
+          thumbnail_url?: string | null
+          title?: string
+          video_url?: string | null
+          view_count?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

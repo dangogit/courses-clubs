@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -18,14 +18,15 @@ import {
 } from "lucide-react";
 import BunnyPlayer from "@/components/BunnyPlayer";
 import { useWatchedProgress } from "@/hooks/useWatchedProgress";
+import { useRecording, useRecordings } from "@/hooks/useRecordings";
 import WatchedButton from "@/components/WatchedButton";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { initialRecordings } from "@/data/recordings";
+import { Skeleton } from "@/components/ui/skeleton";
 import CommentsSection, { type Comment } from "@/components/CommentsSection";
-
+import { getTagColor } from "@/lib/tagColors";
 
 const mockComments: Comment[] = [
   {
@@ -54,30 +55,51 @@ const mockComments: Comment[] = [
   { id: 3, author: "דני ברק", avatar: "dani", text: "מחכה לחלק הבא! 🔥", date: "לפני שבוע", likes: 7, replies: [] },
 ];
 
-const categoryColors: Record<string, string> = {
-  "למתחילים": "bg-emerald-500/10 text-emerald-600",
-  "ליוצרי תוכן": "bg-purple-500/10 text-purple-600",
-  "לבעלי עסקים": "bg-blue-500/10 text-blue-600",
-  "אוטומציות": "bg-orange-500/10 text-orange-600",
-  "וייב קודינג": "bg-pink-500/10 text-pink-600",
-};
+/** Format a date string (ISO or YYYY-MM-DD) to Hebrew locale */
+function formatHebDate(dateStr: string | null): string {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  return d.toLocaleDateString("he-IL", { day: "numeric", month: "short", year: "numeric" });
+}
+
 export default function RecordingDetailPage() {
   const { id } = useParams() as { id: string };
   const router = useRouter();
-  const recordingIndex = parseInt(id || "0");
-  const recording = initialRecordings[recordingIndex];
 
-  const { isWatched, toggleWatched, watchedCount, totalCount } = useWatchedProgress("recording");
-  const watched = isWatched(recordingIndex);
+  const { data: recording, isLoading, error } = useRecording(id);
+  const { data: allRecordings = [] } = useRecordings();
+
+  // Find position of current recording in the ordered list for prev/next
+  const { prevId, nextId, position, total } = useMemo(() => {
+    const idx = allRecordings.findIndex((r) => r.id === id);
+    return {
+      prevId: idx > 0 ? allRecordings[idx - 1].id : null,
+      nextId: idx >= 0 && idx < allRecordings.length - 1 ? allRecordings[idx + 1].id : null,
+      position: idx >= 0 ? idx + 1 : 0,
+      total: allRecordings.length,
+    };
+  }, [allRecordings, id]);
+
+  const { isWatched, toggleWatched, watchedCount, totalCount } = useWatchedProgress("recording", allRecordings.length);
+  const watched = isWatched(id);
   const remaining = totalCount - (watchedCount + (watched ? 0 : 1));
 
   const [bookmarked, setBookmarked] = useState(false);
   const [theaterMode, setTheaterMode] = useState(false);
 
-  const prevRecording = recordingIndex > 0 ? recordingIndex - 1 : null;
-  const nextRecording = recordingIndex < initialRecordings.length - 1 ? recordingIndex + 1 : null;
+  if (isLoading) {
+    return (
+      <div className="max-w-4xl mx-auto">
+        <Skeleton className="h-4 w-40 mb-4" />
+        <Skeleton className="h-10 w-full mb-4" />
+        <Skeleton className="h-[400px] w-full rounded-2xl mb-4" />
+        <Skeleton className="h-6 w-60 mb-4" />
+        <Skeleton className="h-32 w-full rounded-2xl" />
+      </div>
+    );
+  }
 
-  if (!recording) {
+  if (error || !recording) {
     return (
       <div className="max-w-4xl mx-auto text-center py-20">
         <p className="text-muted-foreground">ההקלטה לא נמצאה</p>
@@ -102,23 +124,23 @@ export default function RecordingDetailPage() {
         <Button
           variant="ghost"
           size="sm"
-          disabled={prevRecording === null}
-          onClick={() => prevRecording !== null && router.push(`/recordings/${prevRecording}`)}
+          disabled={prevId === null}
+          onClick={() => prevId && router.push(`/recordings/${prevId}`)}
           className="text-xs gap-1.5 cursor-pointer"
         >
           <ChevronRight className="h-3.5 w-3.5" />
           הקודמת
         </Button>
         <span className="text-xs text-muted-foreground tabular-nums">
-          {recordingIndex + 1} / {initialRecordings.length}
+          {position} / {total}
           <span className="mx-1.5 text-border">·</span>
           <span className="text-emerald-600 font-medium">{watchedCount} נצפו</span>
         </span>
         <Button
           variant="ghost"
           size="sm"
-          disabled={nextRecording === null}
-          onClick={() => nextRecording !== null && router.push(`/recordings/${nextRecording}`)}
+          disabled={nextId === null}
+          onClick={() => nextId && router.push(`/recordings/${nextId}`)}
           className="text-xs gap-1.5 cursor-pointer"
         >
           הבאה
@@ -132,36 +154,34 @@ export default function RecordingDetailPage() {
           {recording.title}
         </h1>
         <div className="flex flex-wrap items-center gap-2">
-          {recording.categories.map((cat) => (
+          {recording.tags.map((cat) => (
             <span
               key={cat}
-              className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full ${
-                categoryColors[cat] ?? "bg-primary/10 text-primary"
-              }`}
+              className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full ${getTagColor(cat)}`}
             >
               {cat}
             </span>
           ))}
           <div className="flex items-center gap-3 text-xs text-muted-foreground mr-1">
-            <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {recording.date}</span>
-            <span className="flex items-center gap-1"><Eye className="h-3 w-3" /> {recording.views.toLocaleString()} צפיות</span>
-            <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {recording.duration}</span>
+            <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {formatHebDate(recording.recorded_at)}</span>
+            <span className="flex items-center gap-1"><Eye className="h-3 w-3" /> {recording.view_count.toLocaleString()} צפיות</span>
+            <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {recording.duration_label}</span>
           </div>
         </div>
       </div>
 
       {/* Video Player */}
       <BunnyPlayer
-        videoUrl={recording.videoUrl}
+        videoUrl={recording.video_url ?? undefined}
         theaterMode={theaterMode}
-        durationLabel={recording.duration}
+        durationLabel={recording.duration_label ?? undefined}
       />
 
       {/* Action bar */}
       <div className="flex items-center gap-2 mb-5">
         <WatchedButton
           watched={watched}
-          onToggle={() => toggleWatched(recordingIndex)}
+          onToggle={() => toggleWatched(id)}
           remaining={remaining}
         />
         <div className="flex items-center gap-1 mr-auto">
@@ -198,8 +218,8 @@ export default function RecordingDetailPage() {
       {/* Speaker Info */}
       <div className="flex items-center gap-3 bg-card/60 rounded-2xl border border-border/40 p-4 mb-5">
         <Avatar className="h-12 w-12 ring-2 ring-primary/20">
-          <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${recording.avatar}`} />
-          <AvatarFallback className="font-bold">{recording.speaker[0]}</AvatarFallback>
+          <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${recording.speaker_avatar}`} />
+          <AvatarFallback className="font-bold">{recording.speaker?.[0]}</AvatarFallback>
         </Avatar>
         <div className="flex-1">
           <p className="font-semibold">{recording.speaker}</p>
@@ -266,7 +286,7 @@ export default function RecordingDetailPage() {
       <Separator className="mb-6" />
 
       <CommentsSection
-        storageKey={`recording-${recordingIndex}`}
+        storageKey={`recording-${id}`}
         initialComments={mockComments}
         notifyAdmin={true}
         contextLabel="הקלטה"

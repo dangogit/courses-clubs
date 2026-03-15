@@ -1,5 +1,4 @@
 import { useState, useCallback, useMemo } from "react";
-import { initialRecordings } from "@/data/recordings";
 
 const STORAGE_KEYS = {
   recording: "watched-recordings",
@@ -9,7 +8,14 @@ const STORAGE_KEYS = {
 
 type ProgressType = "recording" | "tutorial" | "guide";
 
-function getStoredIds(type: ProgressType): number[] {
+/** Default total counts for types still using mock data */
+const DEFAULT_TOTALS: Record<ProgressType, number> = {
+  recording: 0,
+  tutorial: 6,
+  guide: 6,
+};
+
+function getStoredIds(type: ProgressType): string[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEYS[type]);
     return raw ? JSON.parse(raw) : [];
@@ -18,27 +24,25 @@ function getStoredIds(type: ProgressType): number[] {
   }
 }
 
-function storeIds(type: ProgressType, ids: number[]) {
+function storeIds(type: ProgressType, ids: string[]) {
   localStorage.setItem(STORAGE_KEYS[type], JSON.stringify(ids));
 }
 
-export function useWatchedProgress(type: ProgressType) {
-  const [watchedIds, setWatchedIds] = useState<number[]>(() => getStoredIds(type));
+export function useWatchedProgress(type: ProgressType, totalOverride?: number) {
+  const [watchedIds, setWatchedIds] = useState<string[]>(() => getStoredIds(type));
 
-  const totalCount =
-    type === "recording" ? initialRecordings.length :
-    type === "tutorial" ? 6 :
-    6; // guide
+  const totalCount = totalOverride ?? DEFAULT_TOTALS[type];
 
   const isWatched = useCallback(
-    (id: number) => watchedIds.includes(id),
+    (id: string | number) => watchedIds.includes(String(id)),
     [watchedIds]
   );
 
   const toggleWatched = useCallback(
-    (id: number) => {
+    (id: string | number) => {
+      const strId = String(id);
       setWatchedIds((prev) => {
-        const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
+        const next = prev.includes(strId) ? prev.filter((x) => x !== strId) : [...prev, strId];
         storeIds(type, next);
         return next;
       });
