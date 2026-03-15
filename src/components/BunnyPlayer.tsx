@@ -1,5 +1,16 @@
 import { Play, Clock } from "lucide-react";
 
+const BUNNY_EMBED_HOST = "iframe.mediadelivery.net";
+
+function isValidBunnyUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "https:" && parsed.hostname === BUNNY_EMBED_HOST;
+  } catch {
+    return false;
+  }
+}
+
 interface BunnyPlayerProps {
   videoUrl?: string | null;
   theaterMode?: boolean;
@@ -24,7 +35,7 @@ export default function BunnyPlayer({
     theaterMode ? "rounded-none" : "rounded-2xl mb-4"
   } overflow-hidden shadow-lg`;
 
-  if (videoUrl) {
+  if (videoUrl && isValidBunnyUrl(videoUrl)) {
     return (
       <div className={wrapperClass}>
         <div className={containerClass}>
@@ -32,6 +43,8 @@ export default function BunnyPlayer({
             src={videoUrl}
             title="Video player"
             className="w-full h-full border-0"
+            loading="lazy"
+            sandbox="allow-scripts allow-same-origin"
             allow="accelerometer; gyroscope; autoplay; encrypted-media; picture-in-picture"
             allowFullScreen
           />

@@ -59,4 +59,22 @@ describe("BunnyPlayer", () => {
     expect(screen.getByText("לחצו לצפייה")).toBeDefined();
     expect(screen.queryByText(/דק׳/)).toBeNull();
   });
+
+  it("renders placeholder for javascript: URL", () => {
+    const { container } = render(
+      <BunnyPlayer videoUrl="javascript:alert(1)" />
+    );
+
+    expect(container.querySelector("iframe")).toBeNull();
+    expect(screen.getByText("לחצו לצפייה")).toBeDefined();
+  });
+
+  it("renders placeholder for non-Bunny HTTPS URL", () => {
+    const { container } = render(
+      <BunnyPlayer videoUrl="https://evil.com/embed/12345" />
+    );
+
+    expect(container.querySelector("iframe")).toBeNull();
+    expect(screen.getByText("לחצו לצפייה")).toBeDefined();
+  });
 });
