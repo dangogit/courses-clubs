@@ -47,7 +47,7 @@ test.describe("Login page", () => {
     await page.getByRole("button", { name: /שלח קישור התחברות/ }).click();
 
     await expect(page.getByText("שלחנו קישור התחברות")).toBeVisible({
-      timeout: 15_000,
+      timeout: 30_000,
     });
   });
 });

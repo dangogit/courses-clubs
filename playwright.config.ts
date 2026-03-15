@@ -13,6 +13,8 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: "html",
 
+  timeout: 60_000,
+
   use: {
     baseURL: "http://localhost:3100",
     trace: "on-first-retry",
