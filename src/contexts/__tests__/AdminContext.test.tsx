@@ -87,6 +87,20 @@ describe("AdminContext", () => {
     expect(result.current.isAdminUser).toBe(false);
   });
 
+  it("toggleAdmin toggles back off", () => {
+    mockUseUserRole.mockReturnValue({ data: "admin" });
+
+    const { result } = renderHook(() => useAdmin(), {
+      wrapper: createWrapper(),
+    });
+
+    act(() => result.current.toggleAdmin());
+    expect(result.current.isAdmin).toBe(true);
+
+    act(() => result.current.toggleAdmin());
+    expect(result.current.isAdmin).toBe(false);
+  });
+
   it("isAdminUser is false when role data is undefined (loading)", () => {
     mockUseUserRole.mockReturnValue({ data: undefined });
 

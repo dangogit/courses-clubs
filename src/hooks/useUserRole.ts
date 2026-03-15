@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/client";
 
 export type UserRole = "member" | "moderator" | "admin";
 
+const VALID_ROLES: UserRole[] = ["member", "moderator", "admin"];
+
 export function useUserRole() {
   const supabase = createClient();
 
@@ -21,7 +23,9 @@ export function useUserRole() {
         .single();
 
       if (error || !data) return "member";
-      return data.role as UserRole;
+      return VALID_ROLES.includes(data.role as UserRole)
+        ? (data.role as UserRole)
+        : "member";
     },
     staleTime: 5 * 60 * 1000,
   });
