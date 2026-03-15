@@ -13,6 +13,7 @@ function isValidBunnyUrl(url: string): boolean {
 
 interface BunnyPlayerProps {
   videoUrl?: string | null;
+  thumbnailUrl?: string;
   theaterMode?: boolean;
   durationLabel?: string;
 }
@@ -20,10 +21,12 @@ interface BunnyPlayerProps {
 /**
  * Bunny.net video embed player.
  * When `videoUrl` is set, renders a responsive iframe.
+ * When `thumbnailUrl` is set (and no valid videoUrl), renders a thumbnail image with play overlay.
  * Otherwise renders a gradient placeholder with a play icon.
  */
 export default function BunnyPlayer({
   videoUrl,
+  thumbnailUrl,
   theaterMode = false,
   durationLabel,
 }: BunnyPlayerProps) {
@@ -53,7 +56,40 @@ export default function BunnyPlayer({
     );
   }
 
-  // Placeholder when no video URL is set
+  // Thumbnail placeholder (when thumbnailUrl provided)
+  if (thumbnailUrl) {
+    return (
+      <div className={wrapperClass}>
+        <div
+          className={`${containerClass} relative overflow-hidden bg-muted group`}
+        >
+          <img
+            src={thumbnailUrl}
+            alt="Video thumbnail"
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+            <div className="h-20 w-20 rounded-full bg-white/95 flex items-center justify-center shadow-xl group-hover:scale-110 transition-transform duration-200">
+              <Play className="h-8 w-8 text-foreground fill-foreground me-[-3px]" />
+            </div>
+          </div>
+          {durationLabel && (
+            <div className="absolute bottom-3 start-3 bg-black/70 text-white text-sm px-3 py-1 rounded-lg flex items-center gap-1.5">
+              <Clock className="h-3.5 w-3.5" />
+              {durationLabel}
+            </div>
+          )}
+          <div className="absolute bottom-3 end-3">
+            <span className="bg-black/60 text-white text-xs font-medium px-3 py-1.5 rounded-xl backdrop-blur-sm flex items-center gap-1.5">
+              <Play className="h-3 w-3 fill-current" /> לחצו לצפייה
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Gradient placeholder (no thumbnail) — keep existing code below unchanged
   return (
     <div className={wrapperClass}>
       <div

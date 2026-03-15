@@ -77,4 +77,17 @@ describe("BunnyPlayer", () => {
     expect(container.querySelector("iframe")).toBeNull();
     expect(screen.getByText("לחצו לצפייה")).toBeDefined();
   });
+
+  it("renders thumbnail placeholder when thumbnailUrl provided and no videoUrl", () => {
+    const { container } = render(
+      <BunnyPlayer videoUrl={null} thumbnailUrl="https://example.com/thumb.jpg" durationLabel="10 דק׳" />
+    );
+
+    expect(container.querySelector("iframe")).toBeNull();
+    const img = container.querySelector("img");
+    expect(img).not.toBeNull();
+    expect(img!.getAttribute("src")).toBe("https://example.com/thumb.jpg");
+    expect(screen.getByText("לחצו לצפייה")).toBeDefined();
+    expect(screen.getByText("10 דק׳")).toBeDefined();
+  });
 });
