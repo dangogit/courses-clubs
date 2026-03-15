@@ -67,7 +67,7 @@ lessons
   course_id       uuid NOT NULL REFERENCES courses ON DELETE CASCADE
   title           text NOT NULL
   description     text
-  bunny_video_id  text        -- Bunny.net stream GUID
+  video_url       text        -- full Bunny.net embed URL
   duration_label  text        -- e.g. "25 דק׳"
   min_tier_level  int DEFAULT NULL       -- NULL = inherit from parent course
   order_index     int DEFAULT 0
@@ -83,7 +83,7 @@ recordings
   id              uuid PRIMARY KEY DEFAULT gen_random_uuid()
   title           text NOT NULL
   description     text
-  bunny_video_id  text
+  video_url       text
   thumbnail_url   text
   duration_label  text
   recorded_at     date
@@ -96,7 +96,7 @@ tutorials
   id              uuid PRIMARY KEY DEFAULT gen_random_uuid()
   title           text NOT NULL
   type            text NOT NULL    -- 'video' | 'guide'
-  bunny_video_id  text             -- for video type
+  video_url       text             -- for video type
   content         text             -- markdown, for guide type
   thumbnail_url   text
   category        text

@@ -29,7 +29,7 @@ function makeLesson(overrides: Record<string, unknown> = {}) {
     course_id: "course-1",
     title: "Test Lesson",
     description: "desc",
-    bunny_video_id: null,
+    video_url: null,
     duration_label: "25 דק׳",
     min_tier_level: null,
     order_index: 0,

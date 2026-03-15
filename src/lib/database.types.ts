@@ -101,7 +101,6 @@ export type Database = {
       }
       lessons: {
         Row: {
-          bunny_video_id: string | null
           course_id: string
           description: string | null
           duration_label: string | null
@@ -110,9 +109,9 @@ export type Database = {
           min_tier_level: number | null
           order_index: number
           title: string
+          video_url: string | null
         }
         Insert: {
-          bunny_video_id?: string | null
           course_id: string
           description?: string | null
           duration_label?: string | null
@@ -121,9 +120,9 @@ export type Database = {
           min_tier_level?: number | null
           order_index?: number
           title: string
+          video_url?: string | null
         }
         Update: {
-          bunny_video_id?: string | null
           course_id?: string
           description?: string | null
           duration_label?: string | null
@@ -132,6 +131,7 @@ export type Database = {
           min_tier_level?: number | null
           order_index?: number
           title?: string
+          video_url?: string | null
         }
         Relationships: [
           {

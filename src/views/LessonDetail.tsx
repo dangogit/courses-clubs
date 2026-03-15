@@ -4,10 +4,11 @@ import { useState, useCallback, useMemo } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import {
-  ChevronRight, Clock, Play,
+  ChevronRight, Clock,
   CheckCircle2, BookOpen,
-  Bookmark, Share2, ExternalLink, List, Maximize2, Minimize2,
+  Bookmark, Share2, ExternalLink, List, Maximize2, Minimize2, Play,
 } from "lucide-react";
+import BunnyPlayer from "@/components/BunnyPlayer";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
@@ -115,25 +116,11 @@ export default function LessonDetail() {
         </div>
 
         {/* Video Player */}
-        <div className={theaterMode ? "bg-black/90 -mx-3 sm:-mx-4 px-0 mb-4" : ""}>
-        <div className={`w-full aspect-video ${theaterMode ? "rounded-none" : "rounded-2xl mb-4"} gradient-hero relative flex items-center justify-center overflow-hidden group cursor-pointer shadow-lg`}>
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_75%,hsla(0,0%,100%,0.12),transparent_50%)]" />
-          <div className="absolute inset-0 bg-black/10 opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
-          <div className="relative h-20 w-20 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center group-hover:scale-110 group-hover:bg-black/60 transition-all duration-300 shadow-2xl">
-            <Play className="h-9 w-9 text-white mr-[-3px]" />
-          </div>
-          <div className="absolute bottom-4 left-4">
-            <span className="bg-black/60 text-white text-xs font-medium px-3 py-1.5 rounded-xl backdrop-blur-sm flex items-center gap-1.5">
-              <Clock className="h-3 w-3" /> {lesson.duration_label}
-            </span>
-          </div>
-          <div className="absolute bottom-4 right-4">
-            <span className="bg-black/60 text-white text-xs font-medium px-3 py-1.5 rounded-xl backdrop-blur-sm flex items-center gap-1.5">
-              <Play className="h-3 w-3 fill-current" /> לחצו לצפייה
-            </span>
-          </div>
-        </div>
-        </div>
+        <BunnyPlayer
+          videoUrl={lesson.video_url}
+          theaterMode={theaterMode}
+          durationLabel={lesson.duration_label ?? undefined}
+        />
 
         {/* Action bar */}
         <div className="flex items-center gap-2 mb-5">

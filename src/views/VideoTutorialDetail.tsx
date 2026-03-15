@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowRight, Clock, Play, Plus, Tag, Maximize2, Minimize2 } from "lucide-react";
+import BunnyPlayer from "@/components/BunnyPlayer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { videoTutorials } from "@/data/tutorials";
@@ -60,24 +61,32 @@ export default function VideoTutorialDetail() {
       <p className="text-base leading-relaxed text-muted-foreground mb-8">{tutorial.description}</p>
 
       {/* Video Player */}
-      <div className={theaterMode ? "bg-black/90 -mx-4 px-0 mb-5" : ""}>
-      <div className={`relative ${theaterMode ? "rounded-none" : "rounded-2xl mb-5"} overflow-hidden bg-muted aspect-video shadow-md group cursor-pointer`}>
-        <img
-          src={tutorial.thumbnail}
-          alt={tutorial.title}
-          className="w-full h-full object-cover"
+      {tutorial.videoUrl ? (
+        <BunnyPlayer
+          videoUrl={tutorial.videoUrl}
+          theaterMode={theaterMode}
+          durationLabel={tutorial.duration}
         />
-        <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-          <div className="h-20 w-20 rounded-full bg-white/95 flex items-center justify-center shadow-xl group-hover:scale-110 transition-transform duration-200">
-            <Play className="h-8 w-8 text-foreground fill-foreground mr-[-3px]" />
+      ) : (
+        <div className={theaterMode ? "bg-black/90 -mx-4 px-0 mb-5" : ""}>
+        <div className={`relative ${theaterMode ? "rounded-none" : "rounded-2xl mb-5"} overflow-hidden bg-muted aspect-video shadow-md group cursor-pointer`}>
+          <img
+            src={tutorial.thumbnail}
+            alt={tutorial.title}
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+            <div className="h-20 w-20 rounded-full bg-white/95 flex items-center justify-center shadow-xl group-hover:scale-110 transition-transform duration-200">
+              <Play className="h-8 w-8 text-foreground fill-foreground mr-[-3px]" />
+            </div>
+          </div>
+          <div className="absolute bottom-3 left-3 bg-black/70 text-white text-sm px-3 py-1 rounded-lg flex items-center gap-1.5">
+            <Clock className="h-3.5 w-3.5" />
+            {tutorial.duration}
           </div>
         </div>
-        <div className="absolute bottom-3 left-3 bg-black/70 text-white text-sm px-3 py-1 rounded-lg flex items-center gap-1.5">
-          <Clock className="h-3.5 w-3.5" />
-          {tutorial.duration}
         </div>
-      </div>
-      </div>
+      )}
 
       {/* Watched Button + Theater toggle */}
       <div className="flex items-center gap-2 mb-5">

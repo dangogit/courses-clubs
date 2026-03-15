@@ -5,6 +5,7 @@ export interface VideoTutorial {
   duration: string;
   tag: string;
   thumbnail: string;
+  videoUrl?: string;
   steps: string[];
   relatedIds: number[];
 }
