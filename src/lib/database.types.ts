@@ -221,6 +221,39 @@ export type Database = {
         }
         Relationships: []
       }
+      invite_links: {
+        Row: {
+          code: string
+          created_at: string
+          created_by: string
+          discount_percent: number | null
+          expires_at: string | null
+          id: string
+          max_uses: number | null
+          uses_count: number | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          created_by: string
+          discount_percent?: number | null
+          expires_at?: string | null
+          id?: string
+          max_uses?: number | null
+          uses_count?: number | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          created_by?: string
+          discount_percent?: number | null
+          expires_at?: string | null
+          id?: string
+          max_uses?: number | null
+          uses_count?: number | null
+        }
+        Relationships: []
+      }
       lesson_progress: {
         Row: {
           completed_at: string
@@ -585,6 +618,41 @@ export type Database = {
         }
         Relationships: []
       }
+      referrals: {
+        Row: {
+          created_at: string
+          id: string
+          invite_code: string | null
+          referred_id: string
+          referrer_id: string
+          reward_xp: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          invite_code?: string | null
+          referred_id: string
+          referrer_id: string
+          reward_xp?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          invite_code?: string | null
+          referred_id?: string
+          referrer_id?: string
+          reward_xp?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referrals_invite_code_fkey"
+            columns: ["invite_code"]
+            isOneToOne: false
+            referencedRelation: "invite_links"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
       xp_events: {
         Row: {
           amount: number
@@ -617,6 +685,33 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_leaderboard: {
+        Args: { p_period?: string }
+        Returns: {
+          avatar_url: string
+          display_name: string
+          points: number
+          rank: number
+          user_id: string
+        }[]
+      }
+      get_top_inviters: {
+        Args: { p_limit?: number }
+        Returns: {
+          avatar_url: string
+          display_name: string
+          referral_count: number
+          total_xp: number
+          user_id: string
+        }[]
+      }
+      get_user_rank: {
+        Args: { p_period?: string }
+        Returns: {
+          points: number
+          rank: number
+        }[]
+      }
       increment_xp: {
         Args: {
           p_amount: number
@@ -624,6 +719,10 @@ export type Database = {
           p_reference_id?: string
           p_user_id: string
         }
+        Returns: Json
+      }
+      record_referral: {
+        Args: { p_invite_code: string; p_referred_id: string }
         Returns: Json
       }
     }
