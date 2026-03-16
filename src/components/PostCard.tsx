@@ -64,6 +64,7 @@ const POST_TYPE_CONFIG: Record<PostType, { label: string; icon: React.FC<{ class
 interface NestedReply {
   id: number;
   author: string;
+  authorId?: string;
   avatar: string;
   time: string;
   text: string;
@@ -75,6 +76,7 @@ interface NestedReply {
 interface Comment {
   id: number;
   author: string;
+  authorId?: string;
   avatar: string;
   time: string;
   text: string;
@@ -232,9 +234,10 @@ interface CommentItemProps {
   onReply: (author: string, commentId: number) => void;
   onEdit: (commentId: number, newText: string) => void;
   onDelete: (commentId: number, replyId?: number) => void;
+  currentUserId?: string;
 }
 
-function CommentItem({ comment, postId, onLike, liked, onReply, onEdit, onDelete }: CommentItemProps) {
+function CommentItem({ comment, postId, onLike, liked, onReply, onEdit, onDelete, currentUserId }: CommentItemProps) {
   const [showReplies, setShowReplies] = useState(true);
   const [replyLikes, setReplyLikes] = useState<Record<number, boolean>>({});
   const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
@@ -269,7 +272,7 @@ function CommentItem({ comment, postId, onLike, liked, onReply, onEdit, onDelete
 
   const hasReplies = comment.replies && comment.replies.length > 0;
   const likeTotal = comment.likes + (liked ? 1 : 0);
-  const isMyComment = false;
+  const isMyComment = !!(currentUserId && comment.authorId === currentUserId);
 
   return (
     <div className="flex items-start gap-2.5">
@@ -352,7 +355,7 @@ function CommentItem({ comment, postId, onLike, liked, onReply, onEdit, onDelete
         {hasReplies && showReplies && (
           <div className="mt-2.5 space-y-2.5 pr-3 border-r-2 border-primary/20 mr-1">
             {comment.replies!.map((reply) => {
-              const isMyReply = false;
+              const isMyReply = !!(currentUserId && reply.authorId === currentUserId);
               return (
                 <div key={reply.id} className="flex items-start gap-2">
                   <Avatar className="h-6 w-6 shrink-0 mt-0.5">
@@ -860,6 +863,7 @@ export default function PostCard({ post, index, isSaved, onToggleSave, currentUs
                 onReply={handleSetReply}
                 onEdit={handleEditComment}
                 onDelete={handleDeleteComment}
+                currentUserId={currentUserId}
               />
             ))}
 
