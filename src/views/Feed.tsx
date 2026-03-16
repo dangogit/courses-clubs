@@ -69,7 +69,6 @@ const sortOptions = [
 export default function Feed() {
   const [createPostOpen, setCreatePostOpen] = useState(false);
   const [activeSort, setActiveSort] = useState("new");
-  const [activePostType, setActivePostType] = useState("all");
   const [savedPostIds, setSavedPostIds] = useState<Set<string>>(new Set());
   const [currentUserId, setCurrentUserId] = useState<string | undefined>();
 
@@ -101,7 +100,6 @@ export default function Feed() {
 
   const filteredPosts = allPosts.filter((p) => {
     if (activeSort === "saved" && !savedPostIds.has(p.id)) return false;
-    if (activePostType !== "all" && p.postType !== activePostType) return false;
     return true;
   });
 
@@ -200,7 +198,7 @@ export default function Feed() {
             </p>
             {activeSort !== "new" && (
               <button
-                onClick={() => { setActiveSort("new"); setActivePostType("all"); }}
+                onClick={() => setActiveSort("new")}
                 className="mt-2 text-xs text-primary font-semibold hover:underline cursor-pointer"
               >
                 הצג הכל
