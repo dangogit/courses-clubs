@@ -6,6 +6,8 @@ import { club } from "@/config/club";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import { levels, getLevel } from "@/data/levels";
+import { useLeaderboard, useUserRank, type LeaderboardPeriod, type LeaderboardEntry } from "@/hooks/useLeaderboard";
+import { useUserXP } from "@/hooks/useUserXP";
 
 const rankMedals: Record<number, string> = {
   1: "🥇",
@@ -13,66 +15,32 @@ const rankMedals: Record<number, string> = {
   3: "🥉",
 };
 
-interface LeaderEntry {
-  rank: number;
-  name: string;
-  points: number;
-  avatar: string;
-}
-
-const weeklyData: LeaderEntry[] = [
-  { rank: 1, name: "מרק", points: 163, avatar: "mark" },
-  { rank: 2, name: "רונית", points: 111, avatar: "ronit" },
-  { rank: 3, name: "Avi", points: 106, avatar: "avi" },
-  { rank: 4, name: "שלומי", points: 99, avatar: "shlomi" },
-  { rank: 5, name: "גולן", points: 66, avatar: "golan" },
-  { rank: 6, name: "יולי", points: 55, avatar: "yuli" },
-  { rank: 7, name: "טל", points: 54, avatar: "tal" },
-  { rank: 8, name: "נעמה", points: 53, avatar: "naama" },
-  { rank: 9, name: "יעל", points: 48, avatar: "yael" },
-  { rank: 10, name: "דנה", points: 42, avatar: "dana" },
-];
-
-const monthlyData: LeaderEntry[] = [
-  { rank: 1, name: "מרק", points: 652, avatar: "mark" },
-  { rank: 2, name: "גולן", points: 306, avatar: "golan" },
-  { rank: 3, name: "הילה", points: 249, avatar: "hila" },
-  { rank: 4, name: "שלומי", points: 234, avatar: "shlomi" },
-  { rank: 5, name: "איתי", points: 175, avatar: "iti" },
-  { rank: 6, name: "ניצן", points: 160, avatar: "nitzan" },
-  { rank: 7, name: "Avi", points: 150, avatar: "avi" },
-  { rank: 8, name: "ענת", points: 140, avatar: "anat" },
-  { rank: 9, name: "שרי", points: 128, avatar: "sari" },
-  { rank: 10, name: "דוד", points: 115, avatar: "david" },
-];
-
-const allTimeData: LeaderEntry[] = [
-  { rank: 1, name: "ענת", points: 3247, avatar: "anat" },
-  { rank: 2, name: "דוד", points: 3070, avatar: "david" },
-  { rank: 3, name: "גולן", points: 2810, avatar: "golan" },
-  { rank: 4, name: "עופר", points: 2347, avatar: "ofer" },
-  { rank: 5, name: "מרק", points: 2256, avatar: "mark" },
-  { rank: 6, name: "אילן", points: 1933, avatar: "ilan" },
-  { rank: 7, name: "ליאת", points: 1564, avatar: "liat" },
-  { rank: 8, name: "ליהי", points: 1388, avatar: "lihi" },
-  { rank: 9, name: "שלום", points: 1205, avatar: "shalom" },
-  { rank: 10, name: "מאיה", points: 1098, avatar: "maya" },
-];
-
-const myStats = {
-  name: "אורח",
-  points: 72,
-  avatar: "you",
-  role: "חבר מועדון",
-};
-
-function LeaderList({ data }: { data: LeaderEntry[] }) {
+function LeaderList({ data, isLoading }: { data: LeaderboardEntry[]; isLoading: boolean }) {
   const maxPoints = data[0]?.points ?? 1;
+
+  if (isLoading) {
+    return (
+      <div className="space-y-2 p-4">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="h-12 rounded-xl bg-secondary/40 animate-pulse" />
+        ))}
+      </div>
+    );
+  }
+
+  if (data.length === 0) {
+    return (
+      <div className="p-8 text-center text-sm text-muted-foreground">
+        אין נתונים עדיין — התחילו לצבור נקודות!
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-0.5">
       {data.map((l) => (
         <div
-          key={l.rank}
+          key={l.user_id}
           className={`flex items-center gap-2.5 sm:gap-3 px-3 sm:px-4 py-2.5 rounded-xl hover:bg-accent/40 transition-colors ${
             l.rank <= 3 ? "bg-accent/20" : ""
           }`}
@@ -85,11 +53,11 @@ function LeaderList({ data }: { data: LeaderEntry[] }) {
             )}
           </span>
           <Avatar className={`h-8 w-8 shrink-0 ring-2 ${l.rank <= 3 ? "ring-primary/30" : "ring-border/20"}`}>
-            <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${l.avatar}`} />
-            <AvatarFallback className="text-[10px] font-bold">{l.name[0]}</AvatarFallback>
+            <AvatarImage src={l.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${l.user_id}`} />
+            <AvatarFallback className="text-[10px] font-bold">{(l.display_name ?? "?")[0]}</AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
-            <p className={`text-sm font-bold truncate ${l.rank <= 3 ? "text-foreground" : ""}`}>{l.name}</p>
+            <p className={`text-sm font-bold truncate ${l.rank <= 3 ? "text-foreground" : ""}`}>{l.display_name ?? "משתמש"}</p>
             <div className="h-1 rounded-full bg-secondary/80 mt-1 overflow-hidden">
               <div
                 className="h-full rounded-full gradient-primary transition-all duration-500"
@@ -114,13 +82,20 @@ const tabs = [
 ];
 
 export default function Leaderboard() {
-  const myLevel = getLevel(myStats.points);
-  const [tab, setTab] = useState<"weekly" | "monthly" | "alltime">("weekly");
-  const tabData = tab === "weekly" ? weeklyData : tab === "monthly" ? monthlyData : allTimeData;
+  const [tab, setTab] = useState<LeaderboardPeriod>("weekly");
+  const { data: xp } = useUserXP();
+  const { data: leaderboardData, isLoading } = useLeaderboard(tab);
+  const { data: userRank } = useUserRank(tab);
+
+  const userPoints = xp?.xpTotal ?? 0;
+  const myLevel = getLevel(userPoints);
+
+  const periodPoints = userRank?.points ?? userPoints;
+  const periodRank = userRank?.rank;
 
   return (
     <div className="w-full max-w-6xl mx-auto space-y-5">
-      {/* Header — matches other pages */}
+      {/* Header */}
       <div className="flex items-center justify-between mb-1">
         <div className="flex items-center gap-3">
           <div className="h-9 w-9 rounded-xl gradient-primary flex items-center justify-center shadow-sm">
@@ -135,22 +110,24 @@ export default function Leaderboard() {
         </div>
       </div>
 
-      {/* Profile Card — full row */}
+      {/* Profile Card */}
       <div className="bg-card/80 backdrop-blur-sm rounded-2xl card-shadow border border-border/50 overflow-hidden">
         <div className="bg-gradient-to-br from-primary/10 via-accent/40 to-primary/5 pt-5 pb-4 flex flex-col items-center">
           <div className="rounded-full p-[3px] bg-gradient-to-br from-primary to-[hsl(195,100%,60%)] shadow-lg">
             <Avatar className="h-16 w-16 sm:h-20 sm:w-20 border-[3px] border-background">
-              <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${myStats.avatar}`} />
-              <AvatarFallback className="text-xl font-bold">{myStats.name[0]}</AvatarFallback>
+              <AvatarImage src={xp?.avatarUrl || "https://api.dicebear.com/7.x/avataaars/svg?seed=you"} />
+              <AvatarFallback className="text-xl font-bold">{(xp?.displayName ?? "?")[0]}</AvatarFallback>
             </Avatar>
           </div>
-          <h3 className="font-extrabold text-lg mt-2">{myStats.name}</h3>
-          <p className="text-xs text-muted-foreground">{myStats.role}</p>
+          <h3 className="font-extrabold text-lg mt-2">{xp?.displayName ?? "חבר מועדון"}</h3>
+          <p className="text-xs text-muted-foreground">
+            {periodRank ? `מקום ${periodRank} ב${tabs.find((t) => t.id === tab)?.label}` : "חבר מועדון"}
+          </p>
         </div>
         <div className="grid grid-cols-2 border-t border-border/40">
           <div className="p-3 text-center border-l border-border/40">
             <p className="text-[10px] text-muted-foreground mb-0.5">נקודות</p>
-            <p className="text-lg font-extrabold text-primary">{myStats.points.toLocaleString()}</p>
+            <p className="text-lg font-extrabold text-primary">{periodPoints.toLocaleString()}</p>
           </div>
           <div className="p-3 text-center">
             <p className="text-[10px] text-muted-foreground mb-0.5">דרגה נוכחית</p>
@@ -207,7 +184,7 @@ export default function Leaderboard() {
           <div className="overflow-y-auto scrollbar-thin max-h-[530px]">
             <div className="space-y-0.5 p-2">
               {levels.map((l) => {
-                const reached = myStats.points >= l.min;
+                const reached = userPoints >= l.min;
                 const isCurrent = myLevel.name === l.name;
                 return (
                   <div
@@ -259,7 +236,7 @@ export default function Leaderboard() {
             ))}
           </div>
           <div className="overflow-y-auto scrollbar-thin max-h-[530px] p-2">
-            <LeaderList data={tabData} />
+            <LeaderList data={leaderboardData ?? []} isLoading={isLoading} />
           </div>
         </div>
       </div>

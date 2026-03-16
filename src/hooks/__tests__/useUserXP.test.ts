@@ -43,10 +43,12 @@ describe("useUserXP", () => {
     expect(result.current.data?.xpTotal).toBe(0);
     expect(result.current.data?.levelId).toBe(1);
     expect(result.current.data?.level.name).toBe("מתעניין");
+    expect(result.current.data?.displayName).toBeNull();
+    expect(result.current.data?.avatarUrl).toBeNull();
     expect(mockFrom).not.toHaveBeenCalled();
   });
 
-  it("returns XP data for authenticated user", async () => {
+  it("returns XP data and profile info for authenticated user", async () => {
     mockGetUser.mockResolvedValue({
       data: { user: { id: "user-123" } },
     });
@@ -54,7 +56,7 @@ describe("useUserXP", () => {
       select: vi.fn().mockReturnValue({
         eq: vi.fn().mockReturnValue({
           single: vi.fn().mockResolvedValue({
-            data: { xp_total: 750, level_id: 4 },
+            data: { xp_total: 750, level_id: 4, display_name: "דניאל", avatar_url: "https://example.com/avatar.png" },
             error: null,
           }),
         }),
@@ -71,6 +73,8 @@ describe("useUserXP", () => {
     // 750 XP should be level "משתתף פעיל" (min: 500, rank: 4)
     expect(result.current.data?.level.name).toBe("משתתף פעיל");
     expect(result.current.data?.level.rank).toBe(4);
+    expect(result.current.data?.displayName).toBe("דניאל");
+    expect(result.current.data?.avatarUrl).toBe("https://example.com/avatar.png");
   });
 
   it("returns defaults when profile query fails", async () => {
@@ -95,6 +99,8 @@ describe("useUserXP", () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data?.xpTotal).toBe(0);
     expect(result.current.data?.levelId).toBe(1);
+    expect(result.current.data?.displayName).toBeNull();
+    expect(result.current.data?.avatarUrl).toBeNull();
   });
 
   it("calculates level progress correctly", async () => {
@@ -105,7 +111,7 @@ describe("useUserXP", () => {
       select: vi.fn().mockReturnValue({
         eq: vi.fn().mockReturnValue({
           single: vi.fn().mockResolvedValue({
-            data: { xp_total: 300, level_id: 3 },
+            data: { xp_total: 300, level_id: 3, display_name: null, avatar_url: null },
             error: null,
           }),
         }),
