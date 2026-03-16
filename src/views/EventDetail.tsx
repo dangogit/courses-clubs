@@ -11,7 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useEvent, useEvents } from "@/hooks/useEvents";
 import { useEventRsvp } from "@/hooks/useEventRsvp";
-import { downloadICS } from "@/lib/calendar";
+import { downloadICS, sanitizeFilename } from "@/lib/calendar";
+import { club } from "@/config/club";
 import { getDateStr, getTimeStr, useCountdown, formatDay, formatDateShort } from "@/lib/dateUtils";
 
 const typeStyles: Record<string, string> = {
@@ -207,7 +208,8 @@ export default function EventDetailPage() {
                 endTime: end,
                 location: event.is_online ? "Zoom" : undefined,
                 url: event.zoom_url ?? undefined,
-              }, `${event.title.slice(0, 30)}.ics`);
+                uid: event.id,
+              }, club.name, `${sanitizeFilename(event.title.slice(0, 30))}.ics`);
             }}
           >
             <CalendarPlus className="h-3.5 w-3.5" /> הורד .ics

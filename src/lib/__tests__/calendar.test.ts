@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { generateICS } from "../calendar";
+import { generateICS, sanitizeFilename } from "../calendar";
 import type { CalendarEvent } from "../calendar";
 
 function makeEvent(overrides: Partial<CalendarEvent> = {}): CalendarEvent {
@@ -127,10 +127,37 @@ describe("generateICS", () => {
     expect(ics).toContain("STATUS:CONFIRMED");
   });
 
-  it("includes PRODID for Brainers Club", () => {
+  it("defaults PRODID to Club when no clubName provided", () => {
     const ics = generateICS(makeEvent());
 
+    expect(ics).toContain("PRODID:-//Club//Events//HE");
+  });
+
+  it("uses provided clubName in PRODID", () => {
+    const ics = generateICS(makeEvent(), "Brainers Club");
+
     expect(ics).toContain("PRODID:-//Brainers Club//Events//HE");
+  });
+
+  it("includes a UID field", () => {
+    const ics = generateICS(makeEvent());
+
+    expect(ics).toContain("UID:");
+  });
+
+  it("uses provided uid in UID field", () => {
+    const ics = generateICS(makeEvent({ uid: "abc-123" }));
+    const fields = parseICSLines(ics);
+
+    expect(fields.get("UID")).toBe("abc-123");
+  });
+
+  it("includes DTSTAMP field", () => {
+    const ics = generateICS(makeEvent());
+    const fields = parseICSLines(ics);
+
+    expect(fields.has("DTSTAMP")).toBe(true);
+    expect(fields.get("DTSTAMP")).toMatch(/^\d{8}T\d{6}Z$/);
   });
 
   it("handles midnight UTC correctly", () => {
@@ -142,5 +169,19 @@ describe("generateICS", () => {
 
     expect(fields.get("DTSTART")).toBe("20260101T000000Z");
     expect(fields.get("DTEND")).toBe("20260101T010000Z");
+  });
+});
+
+describe("sanitizeFilename", () => {
+  it("replaces filesystem-unfriendly characters", () => {
+    expect(sanitizeFilename('a/b\\c:d*e?"f<g>h|i')).toBe("a_b_c_d_e__f_g_h_i");
+  });
+
+  it("preserves Hebrew characters", () => {
+    expect(sanitizeFilename("אירוע ראשון")).toBe("אירוע ראשון");
+  });
+
+  it("trims whitespace", () => {
+    expect(sanitizeFilename("  hello  ")).toBe("hello");
   });
 });

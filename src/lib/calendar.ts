@@ -10,6 +10,7 @@ export interface CalendarEvent {
   endTime: Date;
   location?: string;
   url?: string;
+  uid?: string;
 }
 
 /**
@@ -40,16 +41,28 @@ function escapeText(text: string): string {
 }
 
 /**
- * Generate an .ics file content string for a single event.
+ * Sanitize a string for use as a filename.
  */
-export function generateICS(event: CalendarEvent): string {
+export function sanitizeFilename(name: string): string {
+  return name.replace(/[/\\:*?"<>|]/g, "_").trim();
+}
+
+/**
+ * Generate an .ics file content string for a single event.
+ * @param clubName — used in PRODID; defaults to "Club" for multi-tenant support
+ */
+export function generateICS(event: CalendarEvent, clubName = "Club"): string {
+  const uid = event.uid ?? `${event.startTime.getTime()}@${clubName.toLowerCase().replace(/\s+/g, "")}`;
+
   const lines: string[] = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Brainers Club//Events//HE",
+    `PRODID:-//${escapeText(clubName)}//Events//HE`,
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     "BEGIN:VEVENT",
+    `UID:${uid}`,
+    `DTSTAMP:${formatDateUTC(new Date())}`,
     `DTSTART:${formatDateUTC(event.startTime)}`,
     `DTEND:${formatDateUTC(event.endTime)}`,
     `SUMMARY:${escapeText(event.title)}`,
@@ -73,9 +86,10 @@ export function generateICS(event: CalendarEvent): string {
 /**
  * Trigger a browser download of the .ics file.
  * Creates a temporary Blob URL, clicks a hidden anchor, and cleans up.
+ * @param clubName — passed to generateICS for PRODID
  */
-export function downloadICS(event: CalendarEvent, filename?: string): void {
-  const icsContent = generateICS(event);
+export function downloadICS(event: CalendarEvent, clubName?: string, filename?: string): void {
+  const icsContent = generateICS(event, clubName);
   const blob = new Blob([icsContent], { type: "text/calendar;charset=utf-8" });
   const url = URL.createObjectURL(blob);
 
