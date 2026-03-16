@@ -197,3 +197,104 @@ INSERT INTO groups (name, description, category, is_private, min_tier_level, ban
   ('למידת מכונה מתקדמת', 'קבוצה למתקדמים שרוצים לצלול לעומק של למידת מכונה. נדבר על ארכיטקטורות מודלים, Fine-Tuning, MLOps, ופריסה בענן. ידע בתכנות מומלץ אבל לא חובה.', 'machine-learning', true, 0, '/assets/groups/machine-learning.jpg'),
   ('No-Code AI', 'הקבוצה לכל מי שרוצה להשתמש ב-AI בלי לגעת בקוד. נלמד על פלטפורמות No-Code כמו Make, Zapier, Bubble ועוד, ואיך לבנות אוטומציות חזקות שחוסכות שעות עבודה בלי ידע טכני.', 'no-code', false, 0, '/assets/groups/nocode-ai.jpg')
 ON CONFLICT (name) DO NOTHING;
+
+-- =============================================================================
+-- Events (matches mock data — 10 community events)
+-- =============================================================================
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM events LIMIT 1) THEN
+    INSERT INTO events (title, description, thumbnail_url, starts_at, ends_at, zoom_url, is_online, max_attendees, event_type, speaker_name, speaker_avatar_url, min_tier_level, is_published) VALUES
+      (
+        'הטרנדים הכי חמים בעולם הקריירה ל-2026 ואילו כלי AI חובה להכיר',
+        'רותי דניס חושפת את הטרנדים החמים ביותר בעולם הקריירה ל-2026 ואילו כלי AI חובה להכיר כדי להישאר רלוונטיים',
+        NULL,
+        '2026-02-04T20:30:00+02:00',
+        '2026-02-04T22:00:00+02:00',
+        NULL, true, NULL, 'הרצאה',
+        'רותי דניס', '/assets/speakers/ruti-denis.jpg', 0, true
+      ),
+      (
+        'איך לחשוב על מוצר לעסק וליצור לו הצעה שאי אפשר לסרב לה בעזרת AI',
+        'גבי דניאל מלמד איך לחשוב על מוצר לעסק וליצור הצעה שאי אפשר לסרב לה — הכל בעזרת כלי AI',
+        NULL,
+        '2026-02-11T20:30:00+02:00',
+        '2026-02-11T22:00:00+02:00',
+        NULL, true, NULL, 'סדנה',
+        'גבי דניאל', '/assets/speakers/gabi-daniel.jpg', 0, true
+      ),
+      (
+        'Manychat - יצירת אוטומציות לסושיאל ולוואטסאפ בקלות ובמהירות',
+        'הילי פלאוט מדריכה איך ליצור אוטומציות לסושיאל ולוואטסאפ עם Manychat בקלות ובמהירות',
+        NULL,
+        '2026-02-18T20:30:00+02:00',
+        '2026-02-18T22:00:00+02:00',
+        NULL, true, NULL, 'סדנה',
+        'הילי פלאוט', '/assets/speakers/hili-plaut.jpg', 0, true
+      ),
+      (
+        'מפגש אסטרטגיה חודשי',
+        'מפגש אסטרטגיה חודשי עם עדן ביבס — סקירה, תכנון וכיוונים לחודש הקרוב',
+        NULL,
+        '2026-02-23T19:30:00+02:00',
+        '2026-02-23T21:00:00+02:00',
+        NULL, true, NULL, 'אסטרטגיה',
+        'עדן ביבס', '/assets/speakers/eden-bibas.jpg', 0, true
+      ),
+      (
+        'Google Mixboard - הכלי שמשנה את המשחק בעולמות העיצוב',
+        'משה (מויש) אילון מציג את Google Mixboard — חיבור חכם בין רעיונות, תוכן וחשיבה בעולמות העיצוב',
+        NULL,
+        '2026-02-25T20:30:00+02:00',
+        '2026-02-25T22:00:00+02:00',
+        NULL, true, NULL, 'הרצאה',
+        'משה (מויש) אילון', '/assets/speakers/moshe-eylon.jpg', 0, true
+      ),
+      (
+        'שימוש ב-AI לניהול זמן ופרודוקטיביות',
+        'איך AI יכול לעזור לנהל את הזמן שלנו בצורה חכמה יותר',
+        NULL,
+        '2026-03-04T20:30:00+02:00',
+        '2026-03-04T22:00:00+02:00',
+        NULL, true, NULL, 'הרצאה',
+        'רותי דניס', '/assets/speakers/ruti-denis.jpg', 0, true
+      ),
+      (
+        'בניית אוטומציות עם Make.com',
+        'סדנה מעשית לבניית אוטומציות עם Make.com',
+        NULL,
+        '2026-03-11T20:30:00+02:00',
+        '2026-03-11T22:00:00+02:00',
+        NULL, true, NULL, 'סדנה',
+        'גבי דניאל', '/assets/speakers/gabi-daniel.jpg', 0, true
+      ),
+      (
+        'ChatGPT Advanced — טכניקות מתקדמות',
+        'טכניקות מתקדמות לשימוש ב-ChatGPT לעסקים',
+        NULL,
+        '2026-03-18T20:30:00+02:00',
+        '2026-03-18T22:00:00+02:00',
+        NULL, true, NULL, 'סדנה',
+        'הילי פלאוט', '/assets/speakers/hili-plaut.jpg', 0, true
+      ),
+      (
+        'מפגש אסטרטגיה חודשי — מרץ',
+        'מפגש אסטרטגיה חודשי — סקירה ותכנון לחודש אפריל',
+        NULL,
+        '2026-03-23T19:30:00+02:00',
+        '2026-03-23T21:00:00+02:00',
+        NULL, true, NULL, 'אסטרטגיה',
+        'עדן ביבס', '/assets/speakers/eden-bibas.jpg', 0, true
+      ),
+      (
+        'כלי AI לשיווק ומכירות',
+        'כלי AI שיהפכו את השיווק והמכירות שלכם לאוטומטיים וחכמים',
+        NULL,
+        '2026-03-25T20:30:00+02:00',
+        '2026-03-25T22:00:00+02:00',
+        NULL, true, NULL, 'הרצאה',
+        'משה (מויש) אילון', '/assets/speakers/moshe-eylon.jpg', 0, true
+      );
+  END IF;
+END $$;
