@@ -115,27 +115,39 @@ CREATE TABLE notifications (
 
 ## 2. Indexes
 
+PostgreSQL does NOT auto-index FK columns. All FK columns must have explicit indexes for JOIN and CASCADE performance.
+
 ```sql
+-- Groups
 CREATE INDEX idx_groups_category ON groups (category);
-CREATE INDEX idx_group_members_group ON group_members (group_id);
-CREATE INDEX idx_group_members_user ON group_members (user_id);
+CREATE INDEX idx_groups_created_by ON groups (created_by);  -- FK index
 
-CREATE INDEX idx_posts_feed ON posts (group_id, created_at DESC);
-CREATE INDEX idx_posts_user ON posts (user_id);
+-- Group members
+CREATE INDEX idx_group_members_group ON group_members (group_id);  -- FK index
+CREATE INDEX idx_group_members_user ON group_members (user_id);    -- FK index + RLS
 
-CREATE INDEX idx_post_comments_post ON post_comments (post_id, created_at);
-CREATE INDEX idx_post_comments_parent ON post_comments (parent_id);
+-- Posts (composite index for cursor-based pagination)
+CREATE INDEX idx_posts_feed ON posts (group_id, created_at DESC, id DESC);  -- feed query + cursor
+CREATE INDEX idx_posts_user ON posts (user_id);  -- FK index + RLS
 
-CREATE INDEX idx_post_comments_user ON post_comments (user_id);
+-- Post comments
+CREATE INDEX idx_post_comments_post ON post_comments (post_id, created_at);  -- FK index + feed query
+CREATE INDEX idx_post_comments_parent ON post_comments (parent_id);          -- FK index
+CREATE INDEX idx_post_comments_user ON post_comments (user_id);              -- FK index + RLS
 
-CREATE INDEX idx_post_reactions_post ON post_reactions (post_id, reaction_type);
+-- Post reactions
+CREATE INDEX idx_post_reactions_post ON post_reactions (post_id, reaction_type);  -- aggregation query
 
-CREATE INDEX idx_notifications_user ON notifications (user_id, is_read, created_at DESC);
+-- Notifications
+CREATE INDEX idx_notifications_user ON notifications (user_id, is_read, created_at DESC);  -- FK + feed
+CREATE INDEX idx_notifications_source ON notifications (source_user_id);  -- FK index
 ```
 
 ---
 
 ## 3. RLS Policies
+
+**Performance note:** All policies use `(SELECT auth.uid())` instead of bare `auth.uid()` to cache the function call per policy evaluation (Supabase best practice — avoids per-row function invocation).
 
 ### 3.1 Groups
 
@@ -162,18 +174,18 @@ CREATE POLICY "group_members_select_authenticated" ON group_members
 CREATE POLICY "group_members_insert_owner_tier" ON group_members
   FOR INSERT TO authenticated
   WITH CHECK (
-    auth.uid() = user_id
+    (SELECT auth.uid()) = user_id
     AND (
       SELECT p.tier_level >= g.min_tier_level
       FROM profiles p, groups g
-      WHERE p.id = auth.uid() AND g.id = group_id
+      WHERE p.id = (SELECT auth.uid()) AND g.id = group_id
     )
   );
 
 -- Leave: owner only
 CREATE POLICY "group_members_delete_owner" ON group_members
   FOR DELETE TO authenticated
-  USING (auth.uid() = user_id);
+  USING ((SELECT auth.uid()) = user_id);
 
 -- No UPDATE — to change role, admin uses service role
 CREATE POLICY "group_members_update_deny" ON group_members
@@ -194,7 +206,7 @@ CREATE POLICY "posts_select_authenticated" ON posts
     OR EXISTS (  -- member of private group
       SELECT 1 FROM group_members
       WHERE group_members.group_id = posts.group_id
-        AND group_members.user_id = auth.uid()
+        AND group_members.user_id = (SELECT auth.uid())
     )
   );
 
@@ -202,13 +214,13 @@ CREATE POLICY "posts_select_authenticated" ON posts
 CREATE POLICY "posts_insert_owner" ON posts
   FOR INSERT TO authenticated
   WITH CHECK (
-    auth.uid() = user_id
+    (SELECT auth.uid()) = user_id
     AND (
       group_id IS NULL  -- main feed: anyone can post
       OR EXISTS (
         SELECT 1 FROM group_members
         WHERE group_members.group_id = posts.group_id
-          AND group_members.user_id = auth.uid()
+          AND group_members.user_id = (SELECT auth.uid())
       )
     )
   );
@@ -216,19 +228,19 @@ CREATE POLICY "posts_insert_owner" ON posts
 -- UPDATE: owner only
 CREATE POLICY "posts_update_owner" ON posts
   FOR UPDATE TO authenticated
-  USING (auth.uid() = user_id)
-  WITH CHECK (auth.uid() = user_id);
+  USING ((SELECT auth.uid()) = user_id)
+  WITH CHECK ((SELECT auth.uid()) = user_id);
 
 -- DELETE: owner + site admin + site moderator + group moderator
 CREATE POLICY "posts_delete_authorized" ON posts
   FOR DELETE TO authenticated
   USING (
-    auth.uid() = user_id  -- owner
-    OR (SELECT role FROM profiles WHERE id = auth.uid()) IN ('admin', 'moderator')  -- site admin/mod
+    (SELECT auth.uid()) = user_id  -- owner
+    OR (SELECT role FROM profiles WHERE id = (SELECT auth.uid())) IN ('admin', 'moderator')  -- site admin/mod
     OR EXISTS (  -- group moderator
       SELECT 1 FROM group_members
       WHERE group_members.group_id = posts.group_id
-        AND group_members.user_id = auth.uid()
+        AND group_members.user_id = (SELECT auth.uid())
         AND group_members.role = 'moderator'
     )
   );
@@ -251,25 +263,25 @@ CREATE POLICY "post_comments_select_authenticated" ON post_comments
 -- INSERT: authenticated, own comment
 CREATE POLICY "post_comments_insert_owner" ON post_comments
   FOR INSERT TO authenticated
-  WITH CHECK (auth.uid() = user_id);
+  WITH CHECK ((SELECT auth.uid()) = user_id);
 
 -- UPDATE: owner only
 CREATE POLICY "post_comments_update_owner" ON post_comments
   FOR UPDATE TO authenticated
-  USING (auth.uid() = user_id)
-  WITH CHECK (auth.uid() = user_id);
+  USING ((SELECT auth.uid()) = user_id)
+  WITH CHECK ((SELECT auth.uid()) = user_id);
 
 -- DELETE: owner + site admin + site moderator + group moderator (via post's group)
 CREATE POLICY "post_comments_delete_authorized" ON post_comments
   FOR DELETE TO authenticated
   USING (
-    auth.uid() = user_id
-    OR (SELECT role FROM profiles WHERE id = auth.uid()) IN ('admin', 'moderator')
+    (SELECT auth.uid()) = user_id
+    OR (SELECT role FROM profiles WHERE id = (SELECT auth.uid())) IN ('admin', 'moderator')
     OR EXISTS (
       SELECT 1 FROM group_members gm
       JOIN posts p ON p.group_id = gm.group_id
       WHERE p.id = post_comments.post_id
-        AND gm.user_id = auth.uid()
+        AND gm.user_id = (SELECT auth.uid())
         AND gm.role = 'moderator'
     )
   );
@@ -292,12 +304,12 @@ CREATE POLICY "post_reactions_select_authenticated" ON post_reactions
 -- INSERT: owner only
 CREATE POLICY "post_reactions_insert_owner" ON post_reactions
   FOR INSERT TO authenticated
-  WITH CHECK (auth.uid() = user_id);
+  WITH CHECK ((SELECT auth.uid()) = user_id);
 
 -- DELETE: owner only (unreact)
 CREATE POLICY "post_reactions_delete_owner" ON post_reactions
   FOR DELETE TO authenticated
-  USING (auth.uid() = user_id);
+  USING ((SELECT auth.uid()) = user_id);
 
 -- No UPDATE — delete and re-insert
 CREATE POLICY "post_reactions_update_deny" ON post_reactions
@@ -312,20 +324,20 @@ ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 -- SELECT: owner only
 CREATE POLICY "notifications_select_owner" ON notifications
   FOR SELECT TO authenticated
-  USING (auth.uid() = user_id);
+  USING ((SELECT auth.uid()) = user_id);
 
 -- INSERT: service role / triggers only (no direct client inserts)
 
 -- UPDATE: owner (mark as read)
 CREATE POLICY "notifications_update_owner" ON notifications
   FOR UPDATE TO authenticated
-  USING (auth.uid() = user_id)
-  WITH CHECK (auth.uid() = user_id);
+  USING ((SELECT auth.uid()) = user_id)
+  WITH CHECK ((SELECT auth.uid()) = user_id);
 
 -- DELETE: owner
 CREATE POLICY "notifications_delete_owner" ON notifications
   FOR DELETE TO authenticated
-  USING (auth.uid() = user_id);
+  USING ((SELECT auth.uid()) = user_id);
 ```
 
 ---
@@ -462,7 +474,7 @@ All hooks in `src/hooks/`. Import `Database` type from `src/lib/database.types.t
 
 | Hook | Query Key | Behavior |
 |---|---|---|
-| `useFeed(groupId?)` | `['feed', groupId ?? 'main']` | `useInfiniteQuery` — cursor-based pagination (20 per page) using `created_at` as cursor (`WHERE created_at < lastPostTimestamp`). Cursor-based avoids offset drift from Realtime inserts. Joins `profiles` for author data. Aggregates reaction counts via Supabase count. Pinned posts fetched separately and prepended to first page only (excluded from cursor). |
+| `useFeed(groupId?)` | `['feed', groupId ?? 'main']` | `useInfiniteQuery` — cursor-based pagination (20 per page) using composite cursor `(created_at, id)` to handle timestamp ties: `WHERE (created_at, id) < (lastTimestamp, lastId)`. Cursor-based avoids offset drift from Realtime inserts. Joins `profiles` for author data. Aggregates reaction counts via Supabase count. Pinned posts fetched separately and prepended to first page only (excluded from cursor). |
 | `useCreatePost()` | mutation | Insert post. Invalidates feed. |
 | `useUpdatePost()` | mutation | Update post content/images. Optimistic update. |
 | `useDeletePost()` | mutation | Delete post. Optimistic removal from cache. |
