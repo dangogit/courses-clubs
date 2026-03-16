@@ -39,21 +39,21 @@ async function getGroupId(): Promise<string> {
 
 test.describe("Feed page", () => {
   test("feed page loads and shows create post area", async ({ page }) => {
-    await safeGoto(page, "/feed");
+    await safeGoto(page, "/community");
     await expect(
       page.getByText("שתף שאלה, פרויקט, הישג או תובנה עם הקהילה...")
     ).toBeVisible({ timeout: 20_000 });
   });
 
   test("feed page shows sort buttons", async ({ page }) => {
-    await safeGoto(page, "/feed");
+    await safeGoto(page, "/community");
     await expect(page.getByText("חדשים").first()).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText("פעילות אחרונה")).toBeVisible();
     await expect(page.getByText("נשמרו")).toBeVisible();
   });
 
   test("feed page shows post count badge", async ({ page }) => {
-    await safeGoto(page, "/feed");
+    await safeGoto(page, "/community");
     await expect(page.getByText(/\d+\s*פוסטים/)).toBeVisible({ timeout: 15_000 });
   });
 });
@@ -65,7 +65,7 @@ test.describe("Feed post creation", () => {
   const testContent = `E2E test post ${Date.now()}`;
 
   test("creating a post shows it in the feed", async ({ page }) => {
-    await safeGoto(page, "/feed");
+    await safeGoto(page, "/community");
     // Wait for page to fully load
     await expect(
       page.getByText("שתף שאלה, פרויקט, הישג או תובנה עם הקהילה...")
