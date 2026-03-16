@@ -21,6 +21,7 @@ export function useJoinGroup() {
     onSuccess: (_data, groupId) => {
       queryClient.invalidateQueries({ queryKey: ["groups"] });
       queryClient.invalidateQueries({ queryKey: ["groups", groupId] });
+      queryClient.invalidateQueries({ queryKey: ["myGroupIds"] });
     },
   });
 }

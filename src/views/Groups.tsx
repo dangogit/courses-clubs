@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { useGroups } from "@/hooks/useGroups";
 import { useJoinGroup } from "@/hooks/useJoinGroup";
 import { useLeaveGroup } from "@/hooks/useLeaveGroup";
+import { useMyGroupIds } from "@/hooks/useMyGroupIds";
 import { toast } from "sonner";
 
 const sortOptions = [
@@ -23,7 +24,7 @@ export default function Groups() {
   const joinGroup = useJoinGroup();
   const leaveGroup = useLeaveGroup();
 
-  const [joinedIds, setJoinedIds] = useState<Set<string>>(new Set());
+  const { data: myGroupIds } = useMyGroupIds();
   const [search, setSearch] = useState("");
   const [activeSort, setActiveSort] = useState("popular");
   const [filterType, setFilterType] = useState<"all" | "public" | "private">("all");
@@ -32,34 +33,23 @@ export default function Groups() {
     e.stopPropagation();
     e.preventDefault();
 
-    if (joinedIds.has(id)) {
-      setJoinedIds((prev) => {
-        const next = new Set(prev);
-        next.delete(id);
-        return next;
-      });
+    const isMember = myGroupIds?.has(id) ?? false;
+    if (isMember) {
       leaveGroup.mutate(id, {
         onError: () => {
-          // Roll back optimistic update
-          setJoinedIds((prev) => new Set(prev).add(id));
           toast.error("שגיאה", { description: "לא הצלחנו לעזוב את הקבוצה. נסו שוב." });
         },
       });
     } else {
-      setJoinedIds((prev) => new Set(prev).add(id));
       joinGroup.mutate(id, {
         onError: () => {
-          // Roll back optimistic update
-          setJoinedIds((prev) => {
-            const next = new Set(prev);
-            next.delete(id);
-            return next;
-          });
           toast.error("שגיאה", { description: "לא הצלחנו להצטרף לקבוצה. נסו שוב." });
         },
       });
     }
   };
+
+  const isMutating = joinGroup.isPending || leaveGroup.isPending;
 
   const filtered = (groups ?? [])
     .filter((g) => {
@@ -70,7 +60,7 @@ export default function Groups() {
     })
     .sort((a, b) => {
       if (activeSort === "popular") return b.memberCount - a.memberCount;
-      if (activeSort === "active") return b.memberCount - a.memberCount;
+      if (activeSort === "active") return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       if (activeSort === "newest") return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       return 0;
     });
@@ -158,7 +148,7 @@ export default function Groups() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
           {filtered.map((g) => {
-            const isMember = joinedIds.has(g.id);
+            const isMember = myGroupIds?.has(g.id) ?? false;
             const coverImage = g.banner_url ?? g.thumbnail_url ?? "/assets/groups/default.jpg";
             return (
               <Link
@@ -185,7 +175,7 @@ export default function Groups() {
                     <div className="flex items-center gap-3 text-xs text-muted-foreground">
                       <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" /> {g.memberCount} חברים</span>
                     </div>
-                    <Button size="sm" variant={isMember ? "outline" : "default"} className={`rounded-full text-xs h-8 px-4 ${isMember ? "" : "gradient-primary shadow-md"}`} onClick={(e) => toggleJoin(g.id, e)}>
+                    <Button size="sm" variant={isMember ? "outline" : "default"} className={`rounded-full text-xs h-8 px-4 ${isMember ? "" : "gradient-primary shadow-md"}`} disabled={isMutating} onClick={(e) => toggleJoin(g.id, e)}>
                       {isMember ? <><BellOff className="h-3.5 w-3.5 ml-1" /> עוזב/ת</> : <><Bell className="h-3.5 w-3.5 ml-1" /> הצטרפות</>}
                     </Button>
                   </div>
