@@ -7,10 +7,14 @@ export function useDeletePost() {
 
   return useMutation({
     mutationFn: async (postId: string) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
       const { error } = await supabase
         .from("posts")
         .delete()
-        .eq("id", postId);
+        .eq("id", postId)
+        .eq("user_id", user.id);
 
       if (error) throw error;
     },
