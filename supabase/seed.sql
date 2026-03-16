@@ -196,4 +196,4 @@ INSERT INTO groups (name, description, category, is_private, min_tier_level, ban
   ('AI ועיצוב', 'קבוצה ליוצרים ומעצבים שמשתמשים ב-AI לעיצוב. נשתף טכניקות ב-Midjourney, DALL-E, Stable Diffusion, כלי וידאו AI, ועוד. מושלם למי שרוצה לשלב יצירתיות עם טכנולוגיה.', 'design', false, 0, '/assets/groups/ai-design.jpg'),
   ('למידת מכונה מתקדמת', 'קבוצה למתקדמים שרוצים לצלול לעומק של למידת מכונה. נדבר על ארכיטקטורות מודלים, Fine-Tuning, MLOps, ופריסה בענן. ידע בתכנות מומלץ אבל לא חובה.', 'machine-learning', true, 0, '/assets/groups/machine-learning.jpg'),
   ('No-Code AI', 'הקבוצה לכל מי שרוצה להשתמש ב-AI בלי לגעת בקוד. נלמד על פלטפורמות No-Code כמו Make, Zapier, Bubble ועוד, ואיך לבנות אוטומציות חזקות שחוסכות שעות עבודה בלי ידע טכני.', 'no-code', false, 0, '/assets/groups/nocode-ai.jpg')
-ON CONFLICT DO NOTHING;
+ON CONFLICT (name) DO NOTHING;

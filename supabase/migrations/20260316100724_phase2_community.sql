@@ -14,7 +14,7 @@ ALTER TABLE profiles ADD COLUMN IF NOT EXISTS tier_level int NOT NULL DEFAULT 0;
 
 CREATE TABLE groups (
   id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  name            text NOT NULL,
+  name            text NOT NULL UNIQUE,
   description     text,
   thumbnail_url   text,
   banner_url      text,
