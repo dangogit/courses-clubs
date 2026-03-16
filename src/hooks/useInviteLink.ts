@@ -29,7 +29,10 @@ export function useInviteLink() {
         .limit(1)
         .single();
 
-      if (error) return null;
+      if (error) {
+        if (error.code === "PGRST116") return null; // no rows from .single()
+        throw error;
+      }
       return data as InviteLink;
     },
     staleTime: 5 * 60 * 1000,

@@ -39,7 +39,8 @@ export function useReferralStats() {
         .eq("referrer_id", user.id)
         .order("created_at", { ascending: false });
 
-      if (error || !data) return { totalReferred: 0, totalXP: 0, friends: [] };
+      if (error) throw error;
+      if (!data) return { totalReferred: 0, totalXP: 0, friends: [] };
 
       // Fetch profile info for referred users
       const referredIds = data.map((r) => r.referred_id);

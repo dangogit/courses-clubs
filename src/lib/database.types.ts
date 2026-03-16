@@ -230,7 +230,7 @@ export type Database = {
           expires_at: string | null
           id: string
           max_uses: number | null
-          uses_count: number | null
+          uses_count: number
         }
         Insert: {
           code: string
@@ -240,7 +240,7 @@ export type Database = {
           expires_at?: string | null
           id?: string
           max_uses?: number | null
-          uses_count?: number | null
+          uses_count?: number
         }
         Update: {
           code?: string
@@ -250,7 +250,7 @@ export type Database = {
           expires_at?: string | null
           id?: string
           max_uses?: number | null
-          uses_count?: number | null
+          uses_count?: number
         }
         Relationships: []
       }

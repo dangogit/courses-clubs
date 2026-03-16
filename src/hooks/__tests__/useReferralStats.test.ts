@@ -119,6 +119,29 @@ describe("useReferralStats", () => {
     expect(result.current.data?.totalReferred).toBe(0);
     expect(result.current.data?.friends).toEqual([]);
   });
+
+  it("throws on Supabase query error", async () => {
+    mockGetUser.mockResolvedValue({
+      data: { user: { id: "user-err" } },
+    });
+    mockFrom.mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          order: vi.fn().mockResolvedValue({
+            data: null,
+            error: { code: "42501", message: "permission denied" },
+          }),
+        }),
+      }),
+    });
+
+    const { result } = renderHook(() => useReferralStats(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error).toEqual({ code: "42501", message: "permission denied" });
+  });
 });
 
 describe("useTopInviters", () => {

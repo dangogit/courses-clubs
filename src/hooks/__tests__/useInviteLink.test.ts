@@ -80,7 +80,7 @@ describe("useInviteLink", () => {
     expect(result.current.data?.uses_count).toBe(3);
   });
 
-  it("returns null when query fails", async () => {
+  it("returns null when no rows found (PGRST116)", async () => {
     mockGetUser.mockResolvedValue({
       data: { user: { id: "user-456" } },
     });
@@ -91,7 +91,7 @@ describe("useInviteLink", () => {
             limit: vi.fn().mockReturnValue({
               single: vi.fn().mockResolvedValue({
                 data: null,
-                error: { message: "Not found" },
+                error: { code: "PGRST116", message: "No rows found" },
               }),
             }),
           }),
@@ -105,5 +105,32 @@ describe("useInviteLink", () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data).toBeNull();
+  });
+
+  it("throws on real errors (non-PGRST116)", async () => {
+    mockGetUser.mockResolvedValue({
+      data: { user: { id: "user-789" } },
+    });
+    mockFrom.mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          order: vi.fn().mockReturnValue({
+            limit: vi.fn().mockReturnValue({
+              single: vi.fn().mockResolvedValue({
+                data: null,
+                error: { code: "42P01", message: "relation does not exist" },
+              }),
+            }),
+          }),
+        }),
+      }),
+    });
+
+    const { result } = renderHook(() => useInviteLink(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error).toEqual({ code: "42P01", message: "relation does not exist" });
   });
 });

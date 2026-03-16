@@ -115,11 +115,11 @@ export default function Leaderboard() {
         <div className="bg-gradient-to-br from-primary/10 via-accent/40 to-primary/5 pt-5 pb-4 flex flex-col items-center">
           <div className="rounded-full p-[3px] bg-gradient-to-br from-primary to-[hsl(195,100%,60%)] shadow-lg">
             <Avatar className="h-16 w-16 sm:h-20 sm:w-20 border-[3px] border-background">
-              <AvatarImage src="https://api.dicebear.com/7.x/avataaars/svg?seed=you" />
-              <AvatarFallback className="text-xl font-bold">?</AvatarFallback>
+              <AvatarImage src={xp?.avatarUrl || "https://api.dicebear.com/7.x/avataaars/svg?seed=you"} />
+              <AvatarFallback className="text-xl font-bold">{(xp?.displayName ?? "?")[0]}</AvatarFallback>
             </Avatar>
           </div>
-          <h3 className="font-extrabold text-lg mt-2">חבר מועדון</h3>
+          <h3 className="font-extrabold text-lg mt-2">{xp?.displayName ?? "חבר מועדון"}</h3>
           <p className="text-xs text-muted-foreground">
             {periodRank ? `מקום ${periodRank} ב${tabs.find((t) => t.id === tab)?.label}` : "חבר מועדון"}
           </p>
