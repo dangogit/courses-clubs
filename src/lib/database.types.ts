@@ -73,6 +73,86 @@ export type Database = {
         }
         Relationships: []
       }
+      event_rsvps: {
+        Row: {
+          event_id: string
+          rsvped_at: string
+          user_id: string
+        }
+        Insert: {
+          event_id: string
+          rsvped_at?: string
+          user_id: string
+        }
+        Update: {
+          event_id?: string
+          rsvped_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_rsvps_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      events: {
+        Row: {
+          created_at: string
+          description: string | null
+          ends_at: string | null
+          event_type: string | null
+          id: string
+          is_online: boolean
+          is_published: boolean
+          max_attendees: number | null
+          min_tier_level: number
+          speaker_avatar_url: string | null
+          speaker_name: string | null
+          starts_at: string
+          thumbnail_url: string | null
+          title: string
+          zoom_url: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          ends_at?: string | null
+          event_type?: string | null
+          id?: string
+          is_online?: boolean
+          is_published?: boolean
+          max_attendees?: number | null
+          min_tier_level?: number
+          speaker_avatar_url?: string | null
+          speaker_name?: string | null
+          starts_at: string
+          thumbnail_url?: string | null
+          title: string
+          zoom_url?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          ends_at?: string | null
+          event_type?: string | null
+          id?: string
+          is_online?: boolean
+          is_published?: boolean
+          max_attendees?: number | null
+          min_tier_level?: number
+          speaker_avatar_url?: string | null
+          speaker_name?: string | null
+          starts_at?: string
+          thumbnail_url?: string | null
+          title?: string
+          zoom_url?: string | null
+        }
+        Relationships: []
+      }
       group_members: {
         Row: {
           group_id: string

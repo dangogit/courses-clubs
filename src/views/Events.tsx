@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Calendar as CalIcon, CalendarPlus, Check, Clock, MapPin, Timer, Sparkles, ChevronRight, ChevronLeft, User, Radio, Video, ArrowLeft } from "lucide-react";
@@ -11,33 +11,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { initialRecordings } from "@/data/recordings";
 import { useAdmin } from "@/contexts/AdminContext";
-
-const rutiDenisImg = "/assets/speakers/ruti-denis.jpg";
-const gabiDanielImg = "/assets/speakers/gabi-daniel.jpg";
-const hiliPlautImg = "/assets/speakers/hili-plaut.jpg";
-const edenBibasImg = "/assets/speakers/eden-bibas.jpg";
-const mosheEylonImg = "/assets/speakers/moshe-eylon.jpg";
-
-const speakerImages: Record<string, string> = {
-  "ruti-denis": rutiDenisImg,
-  "gabi-daniel": gabiDanielImg,
-  "hili-plaut": hiliPlautImg,
-  "eden-bibas": edenBibasImg,
-  "moshe-eylon": mosheEylonImg,
-};
-
-const initialEvents = [
-  { title: "הטרנדים הכי חמים בעולם הקריירה ל-2026 ואילו כלי AI חובה להכיר", date: "2026-02-04", time: "20:30", host: "רותי דניס", avatar: "ruti-denis", type: "הרצאה", soon: false, description: "רותי דניס חושפת את הטרנדים החמים ביותר בעולם הקריירה ל-2026 ואילו כלי AI חובה להכיר כדי להישאר רלוונטיים" },
-  { title: "איך לחשוב על מוצר לעסק וליצור לו הצעה שאי אפשר לסרב לה בעזרת AI", date: "2026-02-11", time: "20:30", host: "גבי דניאל", avatar: "gabi-daniel", type: "סדנה", soon: false, description: "גבי דניאל מלמד איך לחשוב על מוצר לעסק וליצור הצעה שאי אפשר לסרב לה — הכל בעזרת כלי AI" },
-  { title: "Manychat - יצירת אוטומציות לסושיאל ולוואטסאפ בקלות ובמהירות", date: "2026-02-18", time: "20:30", host: "הילי פלאוט", avatar: "hili-plaut", type: "סדנה", soon: false, description: "הילי פלאוט מדריכה איך ליצור אוטומציות לסושיאל ולוואטסאפ עם Manychat בקלות ובמהירות" },
-  { title: "מפגש אסטרטגיה חודשי", date: "2026-02-23", time: "19:30", host: "עדן ביבס", avatar: "eden-bibas", type: "אסטרטגיה", soon: true, description: "מפגש אסטרטגיה חודשי עם עדן ביבס — סקירה, תכנון וכיוונים לחודש הקרוב" },
-  { title: "Google Mixboard - הכלי שמשנה את המשחק בעולמות העיצוב", date: "2026-02-25", time: "20:30", host: "משה (מויש) אילון", avatar: "moshe-eylon", type: "הרצאה", soon: false, description: "משה (מויש) אילון מציג את Google Mixboard — חיבור חכם בין רעיונות, תוכן וחשיבה בעולמות העיצוב" },
-  { title: "שימוש ב-AI לניהול זמן ופרודוקטיביות", date: "2026-03-04", time: "20:30", host: "רותי דניס", avatar: "ruti-denis", type: "הרצאה", soon: false, description: "איך AI יכול לעזור לנהל את הזמן שלנו בצורה חכמה יותר" },
-  { title: "בניית אוטומציות עם Make.com", date: "2026-03-11", time: "20:30", host: "גבי דניאל", avatar: "gabi-daniel", type: "סדנה", soon: false, description: "סדנה מעשית לבניית אוטומציות עם Make.com" },
-  { title: "ChatGPT Advanced — טכניקות מתקדמות", date: "2026-03-18", time: "20:30", host: "הילי פלאוט", avatar: "hili-plaut", type: "סדנה", soon: false, description: "טכניקות מתקדמות לשימוש ב-ChatGPT לעסקים" },
-  { title: "מפגש אסטרטגיה חודשי — מרץ", date: "2026-03-23", time: "19:30", host: "עדן ביבס", avatar: "eden-bibas", type: "אסטרטגיה", soon: false, description: "מפגש אסטרטגיה חודשי — סקירה ותכנון לחודש אפריל" },
-  { title: "כלי AI לשיווק ומכירות", date: "2026-03-25", time: "20:30", host: "משה (מויש) אילון", avatar: "moshe-eylon", type: "הרצאה", soon: false, description: "כלי AI שיהפכו את השיווק והמכירות שלכם לאוטומטיים וחכמים" },
-];
+import { useEvents, type EventWithRsvpCount } from "@/hooks/useEvents";
+import { getDateStr, getTimeStr, formatDayShort, formatDateShort, useCountdown } from "@/lib/dateUtils";
 
 const liveStyle = "bg-primary/10 text-primary border-primary/30";
 
@@ -77,54 +52,20 @@ function isSameDay(a: Date, b: Date) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
-function formatDayName(dateStr: string) {
-  const d = new Date(dateStr);
-  return d.toLocaleDateString("he-IL", { weekday: "short" });
-}
 
-function formatDateShort(dateStr: string) {
-  const d = new Date(dateStr);
-  const day = String(d.getDate()).padStart(2, "0");
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  return { day, month, full: `${day}.${month}` };
-}
-
-function useCountdown(targetDate: string, targetTime: string) {
-  const [timeLeft, setTimeLeft] = useState("");
-  useEffect(() => {
-    const target = new Date(`${targetDate}T${targetTime}:00`);
-    const update = () => {
-      const now = new Date();
-      const diff = target.getTime() - now.getTime();
-      if (diff <= 0) { setTimeLeft("עכשיו! 🔴"); return; }
-      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-      const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
-      const minutes = Math.floor((diff / (1000 * 60)) % 60);
-      const seconds = Math.floor((diff / 1000) % 60);
-      if (days > 0) setTimeLeft(`${days} ימים, ${hours} שעות`);
-      else if (hours > 0) setTimeLeft(`${hours} שעות, ${minutes} דקות`);
-      else setTimeLeft(`${minutes}:${seconds.toString().padStart(2, "0")} דקות`);
-    };
-    update();
-    const interval = setInterval(update, 1000);
-    return () => clearInterval(interval);
-  }, [targetDate, targetTime]);
-  return timeLeft;
-}
-
-function buildGoogleCalendarUrl(event: typeof initialEvents[0]) {
-  const start = new Date(`${event.date}T${event.time}:00`);
-  const end = new Date(start.getTime() + 90 * 60 * 1000);
+function buildGoogleCalendarUrl(event: EventWithRsvpCount) {
+  const start = new Date(event.starts_at);
+  const end = event.ends_at ? new Date(event.ends_at) : new Date(start.getTime() + 90 * 60 * 1000);
   const fmt = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "");
   const params = new URLSearchParams({
     action: "TEMPLATE", text: event.title,
-    dates: `${fmt(start)}/${fmt(end)}`, details: event.description, location: "Zoom",
+    dates: `${fmt(start)}/${fmt(end)}`, details: event.description || "", location: "Zoom",
   });
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
 
-function CountdownBadge({ date, time }: { date: string; time: string }) {
-  const timeLeft = useCountdown(date, time);
+function CountdownBadge({ startsAt }: { startsAt: string }) {
+  const timeLeft = useCountdown(startsAt);
   return (
     <div className="flex items-center gap-1.5 text-xs font-bold text-primary bg-primary/10 px-3 py-1.5 rounded-full shrink-0">
       <Timer className="h-3.5 w-3.5" /><span>{timeLeft}</span>
@@ -132,8 +73,8 @@ function CountdownBadge({ date, time }: { date: string; time: string }) {
   );
 }
 
-function LiveBadge({ date, size = "md" }: { date: string; size?: "sm" | "md" }) {
-  const daysUntil = getDaysUntil(date);
+function LiveBadge({ startsAt, size = "md" }: { startsAt: string; size?: "sm" | "md" }) {
+  const daysUntil = getDaysUntil(getDateStr(startsAt));
   const isSoon = daysUntil >= 0 && daysUntil <= 7;
   const textCls = size === "sm" ? "text-[9px] px-1.5 py-0" : "text-[10px] px-1.5 py-0";
   return (
@@ -161,9 +102,9 @@ function MonthCalendar({
   registeredEvents,
   onRegister,
 }: {
-  events: typeof initialEvents;
-  registeredEvents: Set<number>;
-  onRegister: (ev: React.MouseEvent, index: number) => void;
+  events: EventWithRsvpCount[];
+  registeredEvents: Set<string>;
+  onRegister: (ev: React.MouseEvent, eventId: string) => void;
 }) {
   const router = useRouter();
   const today = new Date();
@@ -178,10 +119,11 @@ function MonthCalendar({
   const nextMonth = () => setViewDate(new Date(year, month + 1, 1));
 
   // Map events to their date strings
-  const eventsByDate: Record<string, typeof initialEvents> = {};
+  const eventsByDate: Record<string, EventWithRsvpCount[]> = {};
   events.forEach((e) => {
-    if (!eventsByDate[e.date]) eventsByDate[e.date] = [];
-    eventsByDate[e.date].push(e);
+    const dateKey = getDateStr(e.starts_at);
+    if (!eventsByDate[dateKey]) eventsByDate[dateKey] = [];
+    eventsByDate[dateKey].push(e);
   });
 
   return (
@@ -253,7 +195,6 @@ function MonthCalendar({
               {/* Events in cell */}
               <div className="space-y-0.5">
                 {cellEvents.map((ev, ei) => {
-                   const evIndex = events.indexOf(ev);
                    const popoverKey = `${dateKey}-${ei}`;
 
                    return (
@@ -273,10 +214,10 @@ function MonthCalendar({
                             {/* Row 1: time + avatar */}
                             <div className="flex items-center justify-between gap-1">
                               <Avatar className="h-4 w-4 shrink-0">
-                                <AvatarImage src={speakerImages[ev.avatar]} className="object-cover" />
+                                <AvatarImage src={ev.speaker_avatar_url ?? undefined} className="object-cover" />
                                 <AvatarFallback className="text-[6px]"><User className="h-2 w-2" /></AvatarFallback>
                               </Avatar>
-                              <span className="text-[9px] sm:text-[10px] font-bold text-primary leading-none">{ev.time}</span>
+                              <span className="text-[9px] sm:text-[10px] font-bold text-primary leading-none">{getTimeStr(ev.starts_at)}</span>
                             </div>
                             {/* Row 2: title with line-clamp */}
                             <p className="text-[9px] sm:text-[10px] font-medium text-primary/80 leading-snug line-clamp-2 text-right">
@@ -293,20 +234,20 @@ function MonthCalendar({
                         <div className="p-4 space-y-3">
                           <div className="flex items-start gap-3">
                             <Avatar className="h-10 w-10 shrink-0 border border-border/50">
-                              <AvatarImage src={speakerImages[ev.avatar]} className="object-cover" />
+                              <AvatarImage src={ev.speaker_avatar_url ?? undefined} className="object-cover" />
                               <AvatarFallback><User className="h-4 w-4" /></AvatarFallback>
                             </Avatar>
                             <div className="flex-1 min-w-0">
                               <p className="font-bold text-sm leading-snug">{ev.title}</p>
                               <div className="flex items-center gap-2 mt-1 flex-wrap">
-                                <LiveBadge date={ev.date} />
+                                <LiveBadge startsAt={ev.starts_at} />
                               </div>
                             </div>
                           </div>
                           <div className="space-y-1 text-xs text-muted-foreground">
                             <div className="flex items-center gap-2">
                               <Clock className="h-3 w-3 shrink-0" />
-                              <span>{formatDayName(ev.date)}, {formatDateShort(ev.date).full} · {ev.time}</span>
+                              <span>{formatDayShort(getDateStr(ev.starts_at))}, {formatDateShort(getDateStr(ev.starts_at))} · {getTimeStr(ev.starts_at)}</span>
                             </div>
                             <div className="flex items-center gap-2">
                               <MapPin className="h-3 w-3 shrink-0" />
@@ -314,19 +255,19 @@ function MonthCalendar({
                             </div>
                             <div className="flex items-center gap-2">
                               <User className="h-3 w-3 shrink-0" />
-                              <span>מנחה: <span className="font-medium text-foreground/80">{ev.host}</span></span>
+                              <span>מנחה: <span className="font-medium text-foreground/80">{ev.speaker_name}</span></span>
                             </div>
                           </div>
                           <div className="flex gap-2 pt-1">
                             <Button
                               size="sm"
-                              className={`flex-1 rounded-lg gap-1 text-xs font-bold ${registeredEvents.has(evIndex) ? "bg-emerald-600 hover:bg-emerald-700" : "gradient-primary hover:opacity-90"}`}
+                              className={`flex-1 rounded-lg gap-1 text-xs font-bold ${registeredEvents.has(ev.id) ? "bg-emerald-600 hover:bg-emerald-700" : "gradient-primary hover:opacity-90"}`}
                               onClick={(e) => {
-                                onRegister(e, evIndex);
+                                onRegister(e, ev.id);
                                 setOpenPopover(null);
                               }}
                             >
-                              {registeredEvents.has(evIndex) ? <><Check className="h-3 w-3" /> נרשמת!</> : <><Sparkles className="h-3 w-3" /> הרשמה</>}
+                              {registeredEvents.has(ev.id) ? <><Check className="h-3 w-3" /> נרשמת!</> : <><Sparkles className="h-3 w-3" /> הרשמה</>}
                             </Button>
                             <Button
                               size="sm"
@@ -359,7 +300,7 @@ function LiveRoomTab({
   events,
   onSwitchToCalendar,
 }: {
-  events: typeof initialEvents;
+  events: EventWithRsvpCount[];
   onSwitchToCalendar: () => void;
 }) {
   const { isAdmin } = useAdmin();
@@ -368,11 +309,11 @@ function LiveRoomTab({
 
   // current month events
   const monthEvents = events.filter((e) => {
-    const d = new Date(e.date);
+    const d = new Date(e.starts_at);
     return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
   });
 
-  const futureEvents = events.filter((e) => new Date(`${e.date}T${e.time}:00`) >= now);
+  const futureEvents = events.filter((e) => new Date(e.starts_at) >= now);
   const nextEvent = futureEvents[0];
 
   // recent recordings — last 3
@@ -381,7 +322,7 @@ function LiveRoomTab({
     .slice(0, 3);
 
   const liveEvent = isLiveActive ? (monthEvents.find((e) => {
-    const d = new Date(`${e.date}T${e.time}:00`);
+    const d = new Date(e.starts_at);
     return Math.abs(d.getTime() - now.getTime()) < 3 * 60 * 60 * 1000;
   }) ?? monthEvents[0]) : null;
 
@@ -400,14 +341,14 @@ function LiveRoomTab({
           <div className="p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4">
             {liveEvent && (
               <Avatar className="h-14 w-14 border-2 border-destructive/30 shrink-0">
-                <AvatarImage src={speakerImages[liveEvent.avatar]} className="object-cover" />
-                <AvatarFallback>{liveEvent.host[0]}</AvatarFallback>
+                <AvatarImage src={liveEvent.speaker_avatar_url ?? undefined} className="object-cover" />
+                <AvatarFallback>{liveEvent.speaker_name?.[0]}</AvatarFallback>
               </Avatar>
             )}
             <div className="flex-1 min-w-0">
               <h2 className="font-bold text-base leading-snug">{liveEvent?.title ?? "שידור פעיל"}</h2>
               <p className="text-sm text-muted-foreground mt-0.5">
-                {liveEvent?.host} · {liveEvent?.time}
+                {liveEvent?.speaker_name} · {liveEvent ? getTimeStr(liveEvent.starts_at) : ""}
               </p>
             </div>
             <Button className="rounded-xl gap-2 font-bold bg-destructive hover:bg-destructive/90 text-destructive-foreground shrink-0">
@@ -427,20 +368,20 @@ function LiveRoomTab({
           <div className="p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4">
             <div className="rounded-full p-[2px] bg-gradient-to-br from-primary to-[hsl(195,100%,60%)] shrink-0">
               <Avatar className="h-14 w-14 border-2 border-background">
-                <AvatarImage src={speakerImages[nextEvent.avatar]} className="object-cover" />
-                <AvatarFallback>{nextEvent.host[0]}</AvatarFallback>
+                <AvatarImage src={nextEvent.speaker_avatar_url ?? undefined} className="object-cover" />
+                <AvatarFallback>{nextEvent.speaker_name?.[0]}</AvatarFallback>
               </Avatar>
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-xs text-muted-foreground font-medium mb-1">הלייב הבא</p>
               <h2 className="font-bold text-base leading-snug">{nextEvent.title}</h2>
               <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground flex-wrap">
-                <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{nextEvent.time}</span>
-                <span className="flex items-center gap-1"><CalIcon className="h-3 w-3" />{formatDateShort(nextEvent.date).full} · {formatDayName(nextEvent.date)}</span>
-                <span>{nextEvent.host}</span>
+                <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{getTimeStr(nextEvent.starts_at)}</span>
+                <span className="flex items-center gap-1"><CalIcon className="h-3 w-3" />{formatDateShort(getDateStr(nextEvent.starts_at))} · {formatDayShort(getDateStr(nextEvent.starts_at))}</span>
+                <span>{nextEvent.speaker_name}</span>
               </div>
               <div className="mt-2">
-                <CountdownBadge date={nextEvent.date} time={nextEvent.time} />
+                <CountdownBadge startsAt={nextEvent.starts_at} />
               </div>
             </div>
             <Button
@@ -478,28 +419,28 @@ function LiveRoomTab({
           </h3>
         </div>
         <div className="divide-y divide-border/40">
-          {monthEvents.map((e, idx) => {
-            const daysUntil = getDaysUntil(e.date);
+          {monthEvents.map((e) => {
+            const daysUntil = getDaysUntil(getDateStr(e.starts_at));
             const isPast = daysUntil < 0;
             const isToday = daysUntil === 0;
             const isNext = e === nextEvent;
             return (
-              <div key={idx} className={`flex items-center gap-3 px-5 py-3 transition-colors ${isNext ? "bg-primary/5" : "hover:bg-secondary/20"}`}>
+              <div key={e.id} className={`flex items-center gap-3 px-5 py-3 transition-colors ${isNext ? "bg-primary/5" : "hover:bg-secondary/20"}`}>
                 <span className={`text-sm w-5 flex justify-center ${isPast ? "text-muted-foreground/50" : isToday ? "text-destructive" : "text-muted-foreground/50"}`}>
                   {isPast ? "✅" : isToday ? "🔴" : "○"}
                 </span>
                 <span className={`text-xs font-mono w-11 shrink-0 ${isPast ? "text-muted-foreground/50" : "text-foreground/70"}`}>
-                  {formatDateShort(e.date).full}
+                  {formatDateShort(getDateStr(e.starts_at))}
                 </span>
                 <Avatar className="h-6 w-6 shrink-0">
-                  <AvatarImage src={speakerImages[e.avatar]} className="object-cover" />
-                  <AvatarFallback className="text-[8px]">{e.host[0]}</AvatarFallback>
+                  <AvatarImage src={e.speaker_avatar_url ?? undefined} className="object-cover" />
+                  <AvatarFallback className="text-[8px]">{e.speaker_name?.[0]}</AvatarFallback>
                 </Avatar>
                 <span className={`flex-1 text-sm font-medium truncate ${isPast ? "text-muted-foreground/60" : "text-foreground"}`}>
                   {e.title}
                 </span>
                 <span className={`text-xs shrink-0 ${isPast ? "text-muted-foreground/40" : "text-muted-foreground"}`}>
-                  {e.host.split(" ")[0]}
+                  {e.speaker_name?.split(" ")[0]}
                 </span>
                 {isToday && (
                   <Badge className="bg-destructive/10 text-destructive border-destructive/30 text-[9px] px-1.5 py-0 shrink-0">היום!</Badge>
@@ -553,21 +494,38 @@ function LiveRoomTab({
 // ─────────────────── Main Page ───────────────────
 export default function Events() {
   const router = useRouter();
-  const [registeredEvents, setRegisteredEvents] = useState<Set<number>>(new Set());
+  const { data: events, isLoading, error } = useEvents();
+  const [registeredEvents, setRegisteredEvents] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState("calendar");
   const now = new Date();
 
-  const toggleRegister = (ev: React.MouseEvent, index: number) => {
+  if (isLoading) {
+    return (
+      <div className="w-full max-w-4xl mx-auto flex items-center justify-center py-20">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      </div>
+    );
+  }
+
+  if (error || !events) {
+    return (
+      <div className="w-full max-w-4xl mx-auto text-center py-20">
+        <p className="text-muted-foreground">שגיאה בטעינת אירועים</p>
+      </div>
+    );
+  }
+
+  const toggleRegister = (ev: React.MouseEvent, eventId: string) => {
     ev.stopPropagation();
     setRegisteredEvents((prev) => {
       const next = new Set(prev);
-      if (next.has(index)) next.delete(index);
-      else next.add(index);
+      if (next.has(eventId)) next.delete(eventId);
+      else next.add(eventId);
       return next;
     });
   };
 
-  const futureEvents = initialEvents.filter((e) => new Date(`${e.date}T${e.time}:00`) >= now);
+  const futureEvents = events.filter((e) => new Date(e.starts_at) >= now);
   const nextEvent = futureEvents[0];
 
   return (
@@ -604,15 +562,15 @@ export default function Events() {
         <TabsContent value="calendar" className="mt-0 space-y-5">
           {/* Monthly Calendar */}
           <MonthCalendar
-            events={initialEvents}
+            events={events}
             registeredEvents={registeredEvents}
             onRegister={toggleRegister}
           />
 
       {/* Next Event Hero Card */}
       {nextEvent && (() => {
-        const heroDate = formatDateShort(nextEvent.date);
-        const heroDaysUntil = getDaysUntil(nextEvent.date);
+        const heroDate = formatDateShort(getDateStr(nextEvent.starts_at));
+        const heroDaysUntil = getDaysUntil(getDateStr(nextEvent.starts_at));
         return (
           <div className="pt-2">
             <h2 className="text-sm font-bold text-muted-foreground mb-3 flex items-center gap-2">
@@ -620,30 +578,30 @@ export default function Events() {
               האירוע הבא
             </h2>
             <div
-              onClick={() => router.push(`/events/${initialEvents.indexOf(nextEvent)}`)}
+              onClick={() => router.push(`/events/${nextEvent.id}`)}
               className="relative bg-card/80 backdrop-blur-sm rounded-2xl card-shadow border border-primary/30 ring-1 ring-primary/10 cursor-pointer group hover:elevated-shadow hover:border-primary/40 transition-all duration-300 overflow-hidden"
             >
               {/* Desktop */}
               <div className="relative hidden sm:flex items-start gap-4 p-5">
                 <div className="shrink-0 w-16 text-center pt-1">
-                  <p className="text-2xl font-extrabold text-primary leading-none tracking-tight">{heroDate.full}</p>
-                  <p className="text-[10px] text-muted-foreground font-medium mt-0.5">{formatDayName(nextEvent.date)}</p>
+                  <p className="text-2xl font-extrabold text-primary leading-none tracking-tight">{heroDate}</p>
+                  <p className="text-[10px] text-muted-foreground font-medium mt-0.5">{formatDayShort(getDateStr(nextEvent.starts_at))}</p>
                 </div>
                 <div className="shrink-0 flex flex-col items-center gap-1">
                   <div className="rounded-full p-[2px] bg-gradient-to-br from-primary to-[hsl(195,100%,60%)] shadow-lg">
                     <Avatar className="h-14 w-14 border-[2px] border-background">
-                      <AvatarImage src={speakerImages[nextEvent.avatar]} className="object-cover" />
-                      <AvatarFallback className="text-sm font-bold">{nextEvent.host[0]}</AvatarFallback>
+                      <AvatarImage src={nextEvent.speaker_avatar_url ?? undefined} className="object-cover" />
+                      <AvatarFallback className="text-sm font-bold">{nextEvent.speaker_name?.[0]}</AvatarFallback>
                     </Avatar>
                   </div>
-                  <p className="text-[9px] text-muted-foreground font-medium">{nextEvent.host.split(" ")[0]}</p>
+                  <p className="text-[9px] text-muted-foreground font-medium">{nextEvent.speaker_name?.split(" ")[0]}</p>
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                     <Badge className="gradient-primary border-0 text-[10px] font-bold gap-1">
                       <Sparkles className="h-2.5 w-2.5" /> האירוע הבא
                     </Badge>
-                    <LiveBadge date={nextEvent.date} />
+                    <LiveBadge startsAt={nextEvent.starts_at} />
                     {heroDaysUntil <= 3 && heroDaysUntil > 0 && (
                       <Badge className="bg-red-500/10 text-red-600 border-red-500/30 text-[10px]">
                         עוד {heroDaysUntil} ימים!
@@ -653,18 +611,18 @@ export default function Events() {
                   <h2 className="font-extrabold text-lg leading-snug group-hover:text-primary transition-colors">{nextEvent.title}</h2>
                   <p className="text-xs text-muted-foreground mt-1 line-clamp-2 leading-relaxed">{nextEvent.description}</p>
                   <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {nextEvent.time}</span>
+                    <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {getTimeStr(nextEvent.starts_at)}</span>
                     <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> זום</span>
-                    <span>מנחה: <span className="font-medium text-foreground/80">{nextEvent.host}</span></span>
+                    <span>מנחה: <span className="font-medium text-foreground/80">{nextEvent.speaker_name}</span></span>
                   </div>
                   <div className="flex items-center gap-3 mt-3 flex-wrap">
-                    <CountdownBadge date={nextEvent.date} time={nextEvent.time} />
+                    <CountdownBadge startsAt={nextEvent.starts_at} />
                     <Button
                       size="sm"
-                      className={`rounded-xl gap-1.5 text-xs font-bold ${registeredEvents.has(initialEvents.indexOf(nextEvent)) ? "bg-emerald-600 hover:bg-emerald-700" : "gradient-primary hover:opacity-90"}`}
-                      onClick={(ev) => toggleRegister(ev, initialEvents.indexOf(nextEvent))}
+                      className={`rounded-xl gap-1.5 text-xs font-bold ${registeredEvents.has(nextEvent.id) ? "bg-emerald-600 hover:bg-emerald-700" : "gradient-primary hover:opacity-90"}`}
+                      onClick={(ev) => toggleRegister(ev, nextEvent.id)}
                     >
-                      {registeredEvents.has(initialEvents.indexOf(nextEvent)) ? <><Check className="h-3.5 w-3.5" /> נרשמת!</> : <><Sparkles className="h-3.5 w-3.5" /> הרשמה לאירוע</>}
+                      {registeredEvents.has(nextEvent.id) ? <><Check className="h-3.5 w-3.5" /> נרשמת!</> : <><Sparkles className="h-3.5 w-3.5" /> הרשמה לאירוע</>}
                     </Button>
                     <Button
                       variant="outline"
@@ -686,13 +644,13 @@ export default function Events() {
                 <div className="flex items-start gap-3 p-4 pb-3">
                   <div className="shrink-0 flex flex-col items-center gap-2">
                     <div className="text-center">
-                      <p className="text-xl font-extrabold text-primary leading-none tracking-tight">{heroDate.full}</p>
-                      <p className="text-[9px] text-muted-foreground font-medium mt-0.5">{formatDayName(nextEvent.date)}</p>
+                      <p className="text-xl font-extrabold text-primary leading-none tracking-tight">{heroDate}</p>
+                      <p className="text-[9px] text-muted-foreground font-medium mt-0.5">{formatDayShort(getDateStr(nextEvent.starts_at))}</p>
                     </div>
                     <div className="rounded-full p-[1.5px] bg-gradient-to-br from-primary to-[hsl(195,100%,60%)]">
                       <Avatar className="h-10 w-10 border-[2px] border-background">
-                        <AvatarImage src={speakerImages[nextEvent.avatar]} className="object-cover" />
-                        <AvatarFallback className="text-xs font-bold">{nextEvent.host[0]}</AvatarFallback>
+                        <AvatarImage src={nextEvent.speaker_avatar_url ?? undefined} className="object-cover" />
+                        <AvatarFallback className="text-xs font-bold">{nextEvent.speaker_name?.[0]}</AvatarFallback>
                       </Avatar>
                     </div>
                   </div>
@@ -701,28 +659,28 @@ export default function Events() {
                       <Badge className="gradient-primary border-0 text-[9px] font-bold gap-0.5 px-1.5 py-0">
                         <Sparkles className="h-2.5 w-2.5" /> האירוע הבא
                       </Badge>
-                      <LiveBadge date={nextEvent.date} size="sm" />
+                      <LiveBadge startsAt={nextEvent.starts_at} size="sm" />
                     </div>
                     <h3 className="font-extrabold text-[14px] group-hover:text-primary transition-colors leading-snug">{nextEvent.title}</h3>
                     <div className="flex items-center gap-3 mt-1.5 text-[11px] text-muted-foreground flex-wrap">
-                      <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {nextEvent.time}</span>
+                      <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {getTimeStr(nextEvent.starts_at)}</span>
                       <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> זום</span>
                     </div>
                     <p className="text-[11px] text-muted-foreground mt-1">
-                      מנחה: <span className="font-medium text-foreground/80">{nextEvent.host}</span>
+                      מנחה: <span className="font-medium text-foreground/80">{nextEvent.speaker_name}</span>
                     </p>
                     <div className="mt-2">
-                      <CountdownBadge date={nextEvent.date} time={nextEvent.time} />
+                      <CountdownBadge startsAt={nextEvent.starts_at} />
                     </div>
                   </div>
                 </div>
                 <div className="border-t border-primary/10 px-4 py-2.5 flex gap-2">
                   <Button
                     size="sm"
-                    className={`flex-1 rounded-xl gap-1.5 text-xs font-bold ${registeredEvents.has(initialEvents.indexOf(nextEvent)) ? "bg-emerald-600 hover:bg-emerald-700" : "gradient-primary hover:opacity-90"}`}
-                    onClick={(ev) => toggleRegister(ev, initialEvents.indexOf(nextEvent))}
+                    className={`flex-1 rounded-xl gap-1.5 text-xs font-bold ${registeredEvents.has(nextEvent.id) ? "bg-emerald-600 hover:bg-emerald-700" : "gradient-primary hover:opacity-90"}`}
+                    onClick={(ev) => toggleRegister(ev, nextEvent.id)}
                   >
-                    {registeredEvents.has(initialEvents.indexOf(nextEvent)) ? <><Check className="h-3.5 w-3.5" /> נרשמת!</> : <><Sparkles className="h-3.5 w-3.5" /> הרשמה לאירוע</>}
+                    {registeredEvents.has(nextEvent.id) ? <><Check className="h-3.5 w-3.5" /> נרשמת!</> : <><Sparkles className="h-3.5 w-3.5" /> הרשמה לאירוע</>}
                   </Button>
                   <Button
                     variant="outline"
@@ -749,59 +707,58 @@ export default function Events() {
           אירועים קרובים
         </h2>
         <div className="space-y-3">
-          {futureEvents.map((e, idx) => {
-            const i = initialEvents.indexOf(e);
+          {futureEvents.map((e) => {
             const isNext = e === nextEvent;
-            const typeCls = liveStyle;
-            const daysUntil = getDaysUntil(e.date);
+            const daysUntil = getDaysUntil(getDateStr(e.starts_at));
+            const isSoon = daysUntil <= 3 && daysUntil > 0;
 
             if (isNext) return null;
 
             return (
               <div
-                key={i}
-                onClick={() => router.push(`/events/${i}`)}
+                key={e.id}
+                onClick={() => router.push(`/events/${e.id}`)}
                 className="bg-card/80 backdrop-blur-sm border-primary/30 ring-1 ring-primary/10 rounded-2xl card-shadow border transition-all duration-300 hover:elevated-shadow hover:border-primary/30 relative group cursor-pointer overflow-hidden"
               >
                 {/* Desktop layout */}
                 <div className="hidden sm:flex items-start gap-4 p-4 sm:p-5">
                   <div className="shrink-0 w-14 text-center pt-1">
-                    <p className="text-lg font-extrabold text-primary leading-none tracking-tight">{formatDateShort(e.date).full}</p>
-                    <p className="text-[9px] text-muted-foreground font-medium mt-0.5">{formatDayName(e.date)}</p>
+                    <p className="text-lg font-extrabold text-primary leading-none tracking-tight">{formatDateShort(getDateStr(e.starts_at))}</p>
+                    <p className="text-[9px] text-muted-foreground font-medium mt-0.5">{formatDayShort(getDateStr(e.starts_at))}</p>
                   </div>
                   <div className="shrink-0 flex flex-col items-center gap-1">
                     <div className="rounded-full p-[1.5px] bg-gradient-to-br from-primary to-[hsl(195,100%,60%)]">
                       <Avatar className="h-12 w-12 border-[2px] border-background">
-                        <AvatarImage src={speakerImages[e.avatar]} className="object-cover" />
-                        <AvatarFallback className="text-sm font-bold">{e.host[0]}</AvatarFallback>
+                        <AvatarImage src={e.speaker_avatar_url ?? undefined} className="object-cover" />
+                        <AvatarFallback className="text-sm font-bold">{e.speaker_name?.[0]}</AvatarFallback>
                       </Avatar>
                     </div>
-                    <p className="text-[9px] text-muted-foreground font-medium truncate max-w-[70px]">{e.host.split(" ")[0]}</p>
+                    <p className="text-[9px] text-muted-foreground font-medium truncate max-w-[70px]">{e.speaker_name?.split(" ")[0]}</p>
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      {e.soon && (
+                      {isSoon && (
                         <Badge className="gradient-primary border-0 text-[10px] font-bold gap-1">
                           <Sparkles className="h-2.5 w-2.5" /> בקרוב!
                         </Badge>
                       )}
-                      <LiveBadge date={e.date} />
+                      <LiveBadge startsAt={e.starts_at} />
                     </div>
                     <h3 className="font-bold text-sm group-hover:text-primary transition-colors leading-snug">{e.title}</h3>
                     <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{e.description}</p>
                     <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {e.time}</span>
+                      <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {getTimeStr(e.starts_at)}</span>
                       <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> זום</span>
-                      <span>מנחה: <span className="font-medium text-foreground/80">{e.host}</span></span>
+                      <span>מנחה: <span className="font-medium text-foreground/80">{e.speaker_name}</span></span>
                     </div>
                   </div>
                   <div className="shrink-0 flex items-center gap-2 self-center">
                     <Button
                       size="sm"
-                      className={`rounded-xl gap-1.5 text-xs font-bold ${registeredEvents.has(i) ? "bg-emerald-600 hover:bg-emerald-700" : "gradient-primary hover:opacity-90"}`}
-                      onClick={(ev) => toggleRegister(ev, i)}
+                      className={`rounded-xl gap-1.5 text-xs font-bold ${registeredEvents.has(e.id) ? "bg-emerald-600 hover:bg-emerald-700" : "gradient-primary hover:opacity-90"}`}
+                      onClick={(ev) => toggleRegister(ev, e.id)}
                     >
-                      {registeredEvents.has(i) ? <><Check className="h-3.5 w-3.5" /> נרשמת!</> : <><Sparkles className="h-3.5 w-3.5" /> הרשמה לאירוע</>}
+                      {registeredEvents.has(e.id) ? <><Check className="h-3.5 w-3.5" /> נרשמת!</> : <><Sparkles className="h-3.5 w-3.5" /> הרשמה לאירוע</>}
                     </Button>
                     <Button
                       variant="outline"
@@ -822,45 +779,45 @@ export default function Events() {
                   <div className="flex items-start gap-3 p-4 pb-3">
                     <div className="shrink-0 flex flex-col items-center gap-1.5">
                       <div className="text-center">
-                        <p className="text-[15px] font-extrabold text-primary leading-none tracking-tight">{formatDateShort(e.date).full}</p>
-                        <p className="text-[8px] text-muted-foreground font-medium mt-0.5">{formatDayName(e.date)}</p>
+                        <p className="text-[15px] font-extrabold text-primary leading-none tracking-tight">{formatDateShort(getDateStr(e.starts_at))}</p>
+                        <p className="text-[8px] text-muted-foreground font-medium mt-0.5">{formatDayShort(getDateStr(e.starts_at))}</p>
                       </div>
                       <div className="rounded-full p-[1.5px] bg-gradient-to-br from-primary to-[hsl(195,100%,60%)]">
                         <Avatar className="h-10 w-10 border-[2px] border-background">
-                          <AvatarImage src={speakerImages[e.avatar]} className="object-cover" />
-                          <AvatarFallback className="text-xs font-bold">{e.host[0]}</AvatarFallback>
+                          <AvatarImage src={e.speaker_avatar_url ?? undefined} className="object-cover" />
+                          <AvatarFallback className="text-xs font-bold">{e.speaker_name?.[0]}</AvatarFallback>
                         </Avatar>
                       </div>
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 mb-1 flex-wrap">
-                        {e.soon && (
+                        {isSoon && (
                           <Badge className="gradient-primary border-0 text-[9px] font-bold gap-0.5 px-1.5 py-0">
                             <Sparkles className="h-2.5 w-2.5" /> בקרוב!
                           </Badge>
                         )}
-                        <LiveBadge date={e.date} size="sm" />
+                        <LiveBadge startsAt={e.starts_at} size="sm" />
                         {daysUntil > 0 && daysUntil <= 7 && (
                           <span className="text-[9px] text-primary/70 font-bold">עוד {daysUntil} ימים</span>
                         )}
                       </div>
                       <h3 className="font-bold text-[13px] group-hover:text-primary transition-colors leading-snug">{e.title}</h3>
                       <div className="flex items-center gap-3 mt-1.5 text-[11px] text-muted-foreground flex-wrap">
-                        <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {e.time}</span>
+                        <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {getTimeStr(e.starts_at)}</span>
                         <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> זום</span>
                       </div>
                       <p className="text-[11px] text-muted-foreground mt-1">
-                        מנחה: <span className="font-medium text-foreground/80">{e.host}</span>
+                        מנחה: <span className="font-medium text-foreground/80">{e.speaker_name}</span>
                       </p>
                     </div>
                   </div>
                   <div className="border-t border-border/40 px-4 py-2.5 flex gap-2">
                     <Button
                       size="sm"
-                      className={`flex-1 rounded-xl gap-1.5 text-xs font-bold ${registeredEvents.has(i) ? "bg-emerald-600 hover:bg-emerald-700" : "gradient-primary hover:opacity-90"}`}
-                      onClick={(ev) => toggleRegister(ev, i)}
+                      className={`flex-1 rounded-xl gap-1.5 text-xs font-bold ${registeredEvents.has(e.id) ? "bg-emerald-600 hover:bg-emerald-700" : "gradient-primary hover:opacity-90"}`}
+                      onClick={(ev) => toggleRegister(ev, e.id)}
                     >
-                      {registeredEvents.has(i) ? <><Check className="h-3.5 w-3.5" /> נרשמת!</> : <><Sparkles className="h-3.5 w-3.5" /> הרשמה לאירוע</>}
+                      {registeredEvents.has(e.id) ? <><Check className="h-3.5 w-3.5" /> נרשמת!</> : <><Sparkles className="h-3.5 w-3.5" /> הרשמה לאירוע</>}
                     </Button>
                     <Button
                       variant="outline"
@@ -884,7 +841,7 @@ export default function Events() {
 
         <TabsContent value="live" className="mt-0">
           <LiveRoomTab
-            events={initialEvents}
+            events={events}
             onSwitchToCalendar={() => setActiveTab("calendar")}
           />
         </TabsContent>

@@ -1,37 +1,19 @@
 'use client';
 
-import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
-  Calendar as CalIcon, CalendarPlus, Clock, ExternalLink, MapPin, Timer, Users,
+  Calendar as CalIcon, CalendarPlus, Clock, MapPin, Timer, Users,
   ArrowRight, MessageSquare, Send, Heart, Share2, Check, Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-
-const rutiDenisImg = "/assets/speakers/ruti-denis.jpg";
-const gabiDanielImg = "/assets/speakers/gabi-daniel.jpg";
-const hiliPlautImg = "/assets/speakers/hili-plaut.jpg";
-const edenBibasImg = "/assets/speakers/eden-bibas.jpg";
-const mosheEylonImg = "/assets/speakers/moshe-eylon.jpg";
-
-const speakerImages: Record<string, string> = {
-  "ruti-denis": rutiDenisImg,
-  "gabi-daniel": gabiDanielImg,
-  "hili-plaut": hiliPlautImg,
-  "eden-bibas": edenBibasImg,
-  "moshe-eylon": mosheEylonImg,
-};
-
-const events = [
-  { title: "הטרנדים הכי חמים בעולם הקריירה ל-2026 ואילו כלי AI חובה להכיר", date: "2026-02-04", time: "20:30", host: "רותי דניס", avatar: "ruti-denis", type: "הרצאה", description: "רותי דניס חושפת את הטרנדים החמים ביותר בעולם הקריירה ל-2026 ואילו כלי AI חובה להכיר כדי להישאר רלוונטיים" },
-  { title: "איך לחשוב על מוצר לעסק וליצור לו הצעה שאי אפשר לסרב לה בעזרת AI", date: "2026-02-11", time: "20:30", host: "גבי דניאל", avatar: "gabi-daniel", type: "סדנה", description: "גבי דניאל מלמד איך לחשוב על מוצר לעסק וליצור הצעה שאי אפשר לסרב לה — הכל בעזרת כלי AI" },
-  { title: "Manychat - יצירת אוטומציות לסושיאל ולוואטסאפ בקלות ובמהירות", date: "2026-02-18", time: "20:30", host: "הילי פלאוט", avatar: "hili-plaut", type: "סדנה", description: "הילי פלאוט מדריכה איך ליצור אוטומציות לסושיאל ולוואטסאפ עם Manychat בקלות ובמהירות" },
-  { title: "מפגש אסטרטגיה חודשי", date: "2026-02-23", time: "19:30", host: "עדן ביבס", avatar: "eden-bibas", type: "אסטרטגיה", description: "מפגש אסטרטגיה חודשי עם עדן ביבס — סקירה, תכנון וכיוונים לחודש הקרוב" },
-  { title: "Google Mixboard - הכלי שמשנה את המשחק בעולמות העיצוב", date: "2026-02-25", time: "20:30", host: "משה (מויש) אילון", avatar: "moshe-eylon", type: "הרצאה", description: "משה (מויש) אילון מציג את Google Mixboard — חיבור חכם בין רעיונות, תוכן וחשיבה בעולמות העיצוב" },
-];
+import { useEvent, useEvents } from "@/hooks/useEvents";
+import { useEventRsvp } from "@/hooks/useEventRsvp";
+import { downloadICS, sanitizeFilename } from "@/lib/calendar";
+import { club } from "@/config/club";
+import { getDateStr, getTimeStr, useCountdown, formatDay, formatDateShort } from "@/lib/dateUtils";
 
 const typeStyles: Record<string, string> = {
   "הרצאה": "bg-blue-500/10 text-blue-600 border-blue-500/30",
@@ -39,52 +21,13 @@ const typeStyles: Record<string, string> = {
   "אסטרטגיה": "bg-amber-500/10 text-amber-600 border-amber-500/30",
 };
 
-function formatDateHebrew(dateStr: string) {
-  const d = new Date(dateStr);
-  return d.toLocaleDateString("he-IL", { day: "numeric", month: "long", year: "numeric" });
-}
-
-function formatDay(dateStr: string) {
-  const d = new Date(dateStr);
-  return d.toLocaleDateString("he-IL", { weekday: "long" });
-}
-
-function formatDateShort(dateStr: string) {
-  const d = new Date(dateStr);
-  const day = String(d.getDate()).padStart(2, "0");
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  return `${day}.${month}`;
-}
-
-function useCountdown(targetDate: string, targetTime: string) {
-  const [timeLeft, setTimeLeft] = useState("");
-  useEffect(() => {
-    const target = new Date(`${targetDate}T${targetTime}:00`);
-    const update = () => {
-      const now = new Date();
-      const diff = target.getTime() - now.getTime();
-      if (diff <= 0) { setTimeLeft("עכשיו! 🔴"); return; }
-      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-      const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
-      const minutes = Math.floor((diff / (1000 * 60)) % 60);
-      if (days > 0) setTimeLeft(`${days} ימים, ${hours} שעות`);
-      else if (hours > 0) setTimeLeft(`${hours} שעות, ${minutes} דקות`);
-      else setTimeLeft(`${minutes} דקות`);
-    };
-    update();
-    const interval = setInterval(update, 1000);
-    return () => clearInterval(interval);
-  }, [targetDate, targetTime]);
-  return timeLeft;
-}
-
-function buildGoogleCalendarUrl(event: typeof events[0]) {
-  const start = new Date(`${event.date}T${event.time}:00`);
-  const end = new Date(start.getTime() + 90 * 60 * 1000);
+function buildGoogleCalendarUrl(event: { title: string; description: string | null; starts_at: string; ends_at: string | null }) {
+  const start = new Date(event.starts_at);
+  const end = event.ends_at ? new Date(event.ends_at) : new Date(start.getTime() + 90 * 60 * 1000);
   const fmt = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "");
   const params = new URLSearchParams({
     action: "TEMPLATE", text: event.title,
-    dates: `${fmt(start)}/${fmt(end)}`, details: event.description, location: "Zoom",
+    dates: `${fmt(start)}/${fmt(end)}`, details: event.description || "", location: "Zoom",
   });
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
@@ -107,16 +50,24 @@ const mockComments: Comment[] = [
 export default function EventDetailPage() {
   const { id } = useParams() as { id: string };
   const router = useRouter();
-  const eventIndex = parseInt(id || "0");
-  const event = events[eventIndex];
-  const timeLeft = useCountdown(event?.date || "", event?.time || "");
+  const { data: event, isLoading, error } = useEvent(id);
+  const { toggleRsvp, isToggling } = useEventRsvp(id);
+  const { data: allEvents } = useEvents();
+  const timeLeft = useCountdown(event?.starts_at ?? "");
   const [comments, setComments] = useState(mockComments);
   const [newComment, setNewComment] = useState("");
   const [likedComments, setLikedComments] = useState<Set<number>>(new Set());
-  const [registered, setRegistered] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  if (!event) {
+  if (isLoading) {
+    return (
+      <div className="max-w-4xl mx-auto flex items-center justify-center py-20">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      </div>
+    );
+  }
+
+  if (error || !event) {
     return (
       <div className="max-w-4xl mx-auto text-center py-20">
         <p className="text-muted-foreground">האירוע לא נמצא</p>
@@ -125,9 +76,11 @@ export default function EventDetailPage() {
     );
   }
 
-  const isPast = new Date(`${event.date}T${event.time}:00`) < new Date();
-  const speakerImg = speakerImages[event.avatar];
-  const typeCls = typeStyles[event.type] || "";
+  const isPast = new Date(event.starts_at) < new Date();
+  const typeCls = typeStyles[event.event_type ?? ""] || "";
+  const dateStr = getDateStr(event.starts_at);
+  const timeStr = getTimeStr(event.starts_at);
+  const isFull = event.max_attendees !== null && event.rsvpCount >= event.max_attendees;
 
   const addComment = () => {
     if (!newComment.trim()) return;
@@ -147,10 +100,9 @@ export default function EventDetailPage() {
     });
   };
 
-  // Other events (not current)
-  const otherEvents = events
-    .map((e, i) => ({ ...e, idx: i }))
-    .filter((e) => e.idx !== eventIndex && new Date(`${e.date}T${e.time}:00`) >= new Date())
+  // Other upcoming events (not current)
+  const otherEvents = (allEvents ?? [])
+    .filter((e) => e.id !== id && new Date(e.starts_at) >= new Date())
     .slice(0, 3);
 
   return (
@@ -173,16 +125,16 @@ export default function EventDetailPage() {
             <div className="flex sm:flex-col items-center gap-3 sm:gap-2 shrink-0">
               <div className="rounded-full p-[2px] bg-gradient-to-br from-primary to-[hsl(195,100%,60%)] shadow-lg">
                 <Avatar className="h-16 w-16 sm:h-20 sm:w-20 border-[3px] border-background">
-                  {speakerImg ? (
-                    <AvatarImage src={speakerImg} className="object-cover" />
+                  {event.speaker_avatar_url ? (
+                    <AvatarImage src={event.speaker_avatar_url} className="object-cover" />
                   ) : (
-                    <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${event.avatar}`} />
+                    <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${event.speaker_name ?? "speaker"}`} />
                   )}
-                  <AvatarFallback className="text-lg font-bold">{event.host[0]}</AvatarFallback>
+                  <AvatarFallback className="text-lg font-bold">{(event.speaker_name ?? "?")[0]}</AvatarFallback>
                 </Avatar>
               </div>
               <div className="sm:text-center">
-                <p className="text-sm font-bold text-foreground/80">{event.host}</p>
+                <p className="text-sm font-bold text-foreground/80">{event.speaker_name}</p>
                 <p className="text-[10px] text-muted-foreground">מנחה</p>
               </div>
             </div>
@@ -190,7 +142,9 @@ export default function EventDetailPage() {
             {/* Content */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-2 flex-wrap">
-                <Badge variant="outline" className={`text-[10px] ${typeCls}`}>{event.type}</Badge>
+                {event.event_type && (
+                  <Badge variant="outline" className={`text-[10px] ${typeCls}`}>{event.event_type}</Badge>
+                )}
                 {!isPast && (
                   <div className="flex items-center gap-1.5 text-xs font-bold text-primary bg-primary/10 px-3 py-1 rounded-full">
                     <Timer className="h-3 w-3" />
@@ -205,9 +159,9 @@ export default function EventDetailPage() {
 
               {/* Meta */}
               <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground flex-wrap">
-                <span className="flex items-center gap-1.5"><CalIcon className="h-3.5 w-3.5" /> {formatDay(event.date)}, {formatDateShort(event.date)}</span>
-                <span className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" /> {event.time}</span>
-                <span className="flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5" /> זום (אונליין)</span>
+                <span className="flex items-center gap-1.5"><CalIcon className="h-3.5 w-3.5" /> {formatDay(dateStr)}, {formatDateShort(dateStr)}</span>
+                <span className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" /> {timeStr}</span>
+                <span className="flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5" /> {event.is_online ? "זום (אונליין)" : "פרונטלי"}</span>
               </div>
             </div>
           </div>
@@ -217,7 +171,10 @@ export default function EventDetailPage() {
         <div className="border-t border-border/40 px-5 sm:px-6 py-3 flex items-center gap-3 flex-wrap bg-secondary/10">
           <div className="flex items-center gap-1.5 text-sm">
             <Users className="h-3.5 w-3.5 text-muted-foreground" />
-            <span className="font-bold">247</span>
+            <span className="font-bold">{event.rsvpCount}</span>
+            {event.max_attendees !== null && (
+              <span className="text-muted-foreground text-xs">/ {event.max_attendees}</span>
+            )}
             <span className="text-muted-foreground text-xs">נרשמו</span>
           </div>
 
@@ -225,10 +182,22 @@ export default function EventDetailPage() {
 
           <Button
             size="sm"
-            className={`min-w-[130px] rounded-xl gap-1.5 text-xs font-bold ${registered ? "bg-emerald-600 hover:bg-emerald-700" : "gradient-primary hover:opacity-90"}`}
-            onClick={() => setRegistered(!registered)}
+            className={`min-w-[130px] rounded-xl gap-1.5 text-xs font-bold ${
+              isFull && !event.isRsvped
+                ? "bg-muted text-muted-foreground cursor-not-allowed"
+                : event.isRsvped
+                  ? "bg-emerald-600 hover:bg-emerald-700"
+                  : "gradient-primary hover:opacity-90"
+            }`}
+            onClick={() => toggleRsvp()}
+            disabled={isToggling || (isFull && !event.isRsvped)}
           >
-            {registered ? <><Check className="h-3.5 w-3.5" /> נרשמת!</> : <><Sparkles className="h-3.5 w-3.5" /> הרשמה לאירוע</>}
+            {isFull && !event.isRsvped
+              ? "האירוע מלא"
+              : event.isRsvped
+                ? <><Check className="h-3.5 w-3.5" /> נרשמת!</>
+                : <><Sparkles className="h-3.5 w-3.5" /> הרשמה לאירוע</>
+            }
           </Button>
 
           <Button
@@ -238,6 +207,27 @@ export default function EventDetailPage() {
             render={<a href={buildGoogleCalendarUrl(event)} target="_blank" rel="noopener noreferrer" />}
           >
             <CalendarPlus className="h-3.5 w-3.5" /> הוסף ליומן
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            className="min-w-[130px] rounded-xl gap-1.5 text-xs font-bold"
+            onClick={() => {
+              const start = new Date(event.starts_at);
+              const end = event.ends_at ? new Date(event.ends_at) : new Date(start.getTime() + 90 * 60 * 1000);
+              downloadICS({
+                title: event.title,
+                description: event.description || "",
+                startTime: start,
+                endTime: end,
+                location: event.is_online ? "Zoom" : undefined,
+                url: event.zoom_url ?? undefined,
+                uid: event.id,
+              }, club.name, `${sanitizeFilename(event.title.slice(0, 30))}.ics`);
+            }}
+          >
+            <CalendarPlus className="h-3.5 w-3.5" /> הורד .ics
           </Button>
 
           <Button
@@ -323,24 +313,30 @@ export default function EventDetailPage() {
           <div className="space-y-2">
             {otherEvents.map((e) => (
               <div
-                key={e.idx}
-                onClick={() => router.push(`/events/${e.idx}`)}
+                key={e.id}
+                onClick={() => router.push(`/events/${e.id}`)}
                 className="flex items-center gap-3 p-3 rounded-xl hover:bg-accent/40 transition-colors cursor-pointer group"
               >
                 <div className="shrink-0 text-center w-10">
-                  <p className="text-sm font-extrabold text-primary leading-none">{formatDateShort(e.date)}</p>
+                  <p className="text-sm font-extrabold text-primary leading-none">{formatDateShort(getDateStr(e.starts_at))}</p>
                 </div>
                 <div className="rounded-full p-[1px] bg-gradient-to-br from-primary to-[hsl(195,100%,60%)] shrink-0">
                   <Avatar className="h-9 w-9 border-[1.5px] border-background">
-                    <AvatarImage src={speakerImages[e.avatar]} className="object-cover" />
-                    <AvatarFallback className="text-[9px] font-bold">{e.host[0]}</AvatarFallback>
+                    {e.speaker_avatar_url ? (
+                      <AvatarImage src={e.speaker_avatar_url} className="object-cover" />
+                    ) : (
+                      <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${e.speaker_name ?? "speaker"}`} />
+                    )}
+                    <AvatarFallback className="text-[9px] font-bold">{(e.speaker_name ?? "?")[0]}</AvatarFallback>
                   </Avatar>
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-bold truncate group-hover:text-primary transition-colors">{e.title}</p>
-                  <p className="text-[10px] text-muted-foreground">{e.host} · {e.time}</p>
+                  <p className="text-[10px] text-muted-foreground">{e.speaker_name} · {getTimeStr(e.starts_at)}</p>
                 </div>
-                <Badge variant="outline" className={`text-[9px] shrink-0 ${typeStyles[e.type] || ""}`}>{e.type}</Badge>
+                {e.event_type && (
+                  <Badge variant="outline" className={`text-[9px] shrink-0 ${typeStyles[e.event_type] || ""}`}>{e.event_type}</Badge>
+                )}
               </div>
             ))}
           </div>
