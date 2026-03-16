@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Calendar as CalIcon, CalendarPlus, Check, Clock, MapPin, Timer, Sparkles, ChevronRight, ChevronLeft, User, Radio, Video, ArrowLeft } from "lucide-react";
@@ -12,18 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { initialRecordings } from "@/data/recordings";
 import { useAdmin } from "@/contexts/AdminContext";
 import { useEvents, type EventWithRsvpCount } from "@/hooks/useEvents";
-
-// ---------------------------------------------------------------------------
-// Helpers for extracting date/time from ISO starts_at
-// ---------------------------------------------------------------------------
-function getDateStr(startsAt: string): string {
-  return startsAt.slice(0, 10);
-}
-
-function getTimeStr(startsAt: string): string {
-  const d = new Date(startsAt);
-  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-}
+import { getDateStr, getTimeStr, formatDayShort, formatDateShort, useCountdown } from "@/lib/dateUtils";
 
 const liveStyle = "bg-primary/10 text-primary border-primary/30";
 
@@ -63,40 +52,6 @@ function isSameDay(a: Date, b: Date) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
-function formatDayName(dateStr: string) {
-  const d = new Date(dateStr);
-  return d.toLocaleDateString("he-IL", { weekday: "short" });
-}
-
-function formatDateShort(dateStr: string) {
-  const d = new Date(dateStr);
-  const day = String(d.getDate()).padStart(2, "0");
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  return { day, month, full: `${day}.${month}` };
-}
-
-function useCountdown(startsAt: string) {
-  const [timeLeft, setTimeLeft] = useState("");
-  useEffect(() => {
-    const target = new Date(startsAt);
-    const update = () => {
-      const now = new Date();
-      const diff = target.getTime() - now.getTime();
-      if (diff <= 0) { setTimeLeft("עכשיו!"); return; }
-      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-      const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
-      const minutes = Math.floor((diff / (1000 * 60)) % 60);
-      const seconds = Math.floor((diff / 1000) % 60);
-      if (days > 0) setTimeLeft(`${days} ימים, ${hours} שעות`);
-      else if (hours > 0) setTimeLeft(`${hours} שעות, ${minutes} דקות`);
-      else setTimeLeft(`${minutes}:${seconds.toString().padStart(2, "0")} דקות`);
-    };
-    update();
-    const interval = setInterval(update, 1000);
-    return () => clearInterval(interval);
-  }, [startsAt]);
-  return timeLeft;
-}
 
 function buildGoogleCalendarUrl(event: EventWithRsvpCount) {
   const start = new Date(event.starts_at);
@@ -292,7 +247,7 @@ function MonthCalendar({
                           <div className="space-y-1 text-xs text-muted-foreground">
                             <div className="flex items-center gap-2">
                               <Clock className="h-3 w-3 shrink-0" />
-                              <span>{formatDayName(getDateStr(ev.starts_at))}, {formatDateShort(getDateStr(ev.starts_at)).full} · {getTimeStr(ev.starts_at)}</span>
+                              <span>{formatDayShort(getDateStr(ev.starts_at))}, {formatDateShort(getDateStr(ev.starts_at))} · {getTimeStr(ev.starts_at)}</span>
                             </div>
                             <div className="flex items-center gap-2">
                               <MapPin className="h-3 w-3 shrink-0" />
@@ -422,7 +377,7 @@ function LiveRoomTab({
               <h2 className="font-bold text-base leading-snug">{nextEvent.title}</h2>
               <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground flex-wrap">
                 <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{getTimeStr(nextEvent.starts_at)}</span>
-                <span className="flex items-center gap-1"><CalIcon className="h-3 w-3" />{formatDateShort(getDateStr(nextEvent.starts_at)).full} · {formatDayName(getDateStr(nextEvent.starts_at))}</span>
+                <span className="flex items-center gap-1"><CalIcon className="h-3 w-3" />{formatDateShort(getDateStr(nextEvent.starts_at))} · {formatDayShort(getDateStr(nextEvent.starts_at))}</span>
                 <span>{nextEvent.speaker_name}</span>
               </div>
               <div className="mt-2">
@@ -475,7 +430,7 @@ function LiveRoomTab({
                   {isPast ? "✅" : isToday ? "🔴" : "○"}
                 </span>
                 <span className={`text-xs font-mono w-11 shrink-0 ${isPast ? "text-muted-foreground/50" : "text-foreground/70"}`}>
-                  {formatDateShort(getDateStr(e.starts_at)).full}
+                  {formatDateShort(getDateStr(e.starts_at))}
                 </span>
                 <Avatar className="h-6 w-6 shrink-0">
                   <AvatarImage src={e.speaker_avatar_url ?? undefined} className="object-cover" />
@@ -629,8 +584,8 @@ export default function Events() {
               {/* Desktop */}
               <div className="relative hidden sm:flex items-start gap-4 p-5">
                 <div className="shrink-0 w-16 text-center pt-1">
-                  <p className="text-2xl font-extrabold text-primary leading-none tracking-tight">{heroDate.full}</p>
-                  <p className="text-[10px] text-muted-foreground font-medium mt-0.5">{formatDayName(getDateStr(nextEvent.starts_at))}</p>
+                  <p className="text-2xl font-extrabold text-primary leading-none tracking-tight">{heroDate}</p>
+                  <p className="text-[10px] text-muted-foreground font-medium mt-0.5">{formatDayShort(getDateStr(nextEvent.starts_at))}</p>
                 </div>
                 <div className="shrink-0 flex flex-col items-center gap-1">
                   <div className="rounded-full p-[2px] bg-gradient-to-br from-primary to-[hsl(195,100%,60%)] shadow-lg">
@@ -689,8 +644,8 @@ export default function Events() {
                 <div className="flex items-start gap-3 p-4 pb-3">
                   <div className="shrink-0 flex flex-col items-center gap-2">
                     <div className="text-center">
-                      <p className="text-xl font-extrabold text-primary leading-none tracking-tight">{heroDate.full}</p>
-                      <p className="text-[9px] text-muted-foreground font-medium mt-0.5">{formatDayName(getDateStr(nextEvent.starts_at))}</p>
+                      <p className="text-xl font-extrabold text-primary leading-none tracking-tight">{heroDate}</p>
+                      <p className="text-[9px] text-muted-foreground font-medium mt-0.5">{formatDayShort(getDateStr(nextEvent.starts_at))}</p>
                     </div>
                     <div className="rounded-full p-[1.5px] bg-gradient-to-br from-primary to-[hsl(195,100%,60%)]">
                       <Avatar className="h-10 w-10 border-[2px] border-background">
@@ -768,8 +723,8 @@ export default function Events() {
                 {/* Desktop layout */}
                 <div className="hidden sm:flex items-start gap-4 p-4 sm:p-5">
                   <div className="shrink-0 w-14 text-center pt-1">
-                    <p className="text-lg font-extrabold text-primary leading-none tracking-tight">{formatDateShort(getDateStr(e.starts_at)).full}</p>
-                    <p className="text-[9px] text-muted-foreground font-medium mt-0.5">{formatDayName(getDateStr(e.starts_at))}</p>
+                    <p className="text-lg font-extrabold text-primary leading-none tracking-tight">{formatDateShort(getDateStr(e.starts_at))}</p>
+                    <p className="text-[9px] text-muted-foreground font-medium mt-0.5">{formatDayShort(getDateStr(e.starts_at))}</p>
                   </div>
                   <div className="shrink-0 flex flex-col items-center gap-1">
                     <div className="rounded-full p-[1.5px] bg-gradient-to-br from-primary to-[hsl(195,100%,60%)]">
@@ -824,8 +779,8 @@ export default function Events() {
                   <div className="flex items-start gap-3 p-4 pb-3">
                     <div className="shrink-0 flex flex-col items-center gap-1.5">
                       <div className="text-center">
-                        <p className="text-[15px] font-extrabold text-primary leading-none tracking-tight">{formatDateShort(getDateStr(e.starts_at)).full}</p>
-                        <p className="text-[8px] text-muted-foreground font-medium mt-0.5">{formatDayName(getDateStr(e.starts_at))}</p>
+                        <p className="text-[15px] font-extrabold text-primary leading-none tracking-tight">{formatDateShort(getDateStr(e.starts_at))}</p>
+                        <p className="text-[8px] text-muted-foreground font-medium mt-0.5">{formatDayShort(getDateStr(e.starts_at))}</p>
                       </div>
                       <div className="rounded-full p-[1.5px] bg-gradient-to-br from-primary to-[hsl(195,100%,60%)]">
                         <Avatar className="h-10 w-10 border-[2px] border-background">

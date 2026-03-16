@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter, useParams } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Calendar as CalIcon, CalendarPlus, Clock, MapPin, Timer, Users,
   ArrowRight, MessageSquare, Send, Heart, Share2, Check, Sparkles,
@@ -12,61 +12,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useEvent, useEvents } from "@/hooks/useEvents";
 import { useEventRsvp } from "@/hooks/useEventRsvp";
 import { downloadICS } from "@/lib/calendar";
-
+import { getDateStr, getTimeStr, useCountdown, formatDay, formatDateShort } from "@/lib/dateUtils";
 
 const typeStyles: Record<string, string> = {
   "הרצאה": "bg-blue-500/10 text-blue-600 border-blue-500/30",
   "סדנה": "bg-purple-500/10 text-purple-600 border-purple-500/30",
   "אסטרטגיה": "bg-amber-500/10 text-amber-600 border-amber-500/30",
 };
-
-function formatDateHebrew(dateStr: string) {
-  const d = new Date(dateStr);
-  return d.toLocaleDateString("he-IL", { day: "numeric", month: "long", year: "numeric" });
-}
-
-function formatDay(dateStr: string) {
-  const d = new Date(dateStr);
-  return d.toLocaleDateString("he-IL", { weekday: "long" });
-}
-
-function formatDateShort(dateStr: string) {
-  const d = new Date(dateStr);
-  const day = String(d.getDate()).padStart(2, "0");
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  return `${day}.${month}`;
-}
-
-function getDateStr(startsAt: string): string {
-  return startsAt.slice(0, 10);
-}
-
-function getTimeStr(startsAt: string): string {
-  const d = new Date(startsAt);
-  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
-}
-
-function useCountdown(startsAt: string) {
-  const [timeLeft, setTimeLeft] = useState("");
-  useEffect(() => {
-    const target = new Date(startsAt);
-    const update = () => {
-      const now = new Date();
-      const diff = target.getTime() - now.getTime();
-      if (diff <= 0) { setTimeLeft("עכשיו!"); return; }
-      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-      const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
-      const minutes = Math.floor((diff / (1000 * 60)) % 60);
-      if (days > 0) setTimeLeft(`${days} ימים, ${hours} שעות`);
-      else if (hours > 0) setTimeLeft(`${hours} שעות, ${minutes} דקות`);
-      else setTimeLeft(`${minutes} דקות`);
-    };
-    update();
-    const interval = setInterval(update, 1000);
-    return () => clearInterval(interval);
-  }, [startsAt]);
-  return timeLeft;
-}
 
 function buildGoogleCalendarUrl(event: { title: string; description: string | null; starts_at: string; ends_at: string | null }) {
   const start = new Date(event.starts_at);
