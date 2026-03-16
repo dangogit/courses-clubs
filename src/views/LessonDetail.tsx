@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useRef, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -17,7 +17,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useCourse } from "@/hooks/useCourse";
 import { useLessonProgress } from "@/hooks/useLessonProgress";
 import confetti from "canvas-confetti";
+import { toast } from "sonner";
 import CommentsSection, { type Comment } from "@/components/CommentsSection";
+import { useUserXP } from "@/hooks/useUserXP";
 
 const mockComments: Comment[] = [
   { id: 1, author: "אורן לוי", avatar: "oren", text: "שיעור מעולה! ממליץ בחום", date: "לפני יומיים", likes: 8, replies: [] },
@@ -43,6 +45,7 @@ export default function LessonDetail() {
   const router = useRouter();
   const { data: courseData, isLoading: courseLoading } = useCourse(id);
   const { completedLessonIds, isCompleted, toggleProgress, isToggling, isLoading: progressLoading } = useLessonProgress(id);
+  const { data: xp } = useUserXP();
 
   const course = courseData;
   const lessons = useMemo(() => course?.lessons ?? [], [course]);
@@ -50,6 +53,29 @@ export default function LessonDetail() {
   const lessonIndex = useMemo(() => lessons.findIndex((l) => l.id === lessonId), [lessons, lessonId]);
 
   const watched = lesson ? isCompleted(lesson.id) : false;
+
+  // Level-up detection: compare previous levelId with current
+  const prevLevelIdRef = useRef(xp?.levelId);
+  useEffect(() => {
+    if (xp && prevLevelIdRef.current !== undefined && xp.levelId > prevLevelIdRef.current) {
+      // Level up! Big celebration
+      const burst = () => confetti({
+        particleCount: 150,
+        spread: 100,
+        origin: { y: 0.5 },
+        colors: ["#fbbf24", "#f59e0b", "#eab308", "#facc15", "#fde047"],
+      });
+      burst();
+      setTimeout(burst, 300);
+      setTimeout(burst, 600);
+
+      toast.success(`${xp.level.icon} עלית לרמה: ${xp.level.name}!`, {
+        description: `יש לך ${xp.xpTotal} נקודות XP`,
+        duration: 5000,
+      });
+    }
+    prevLevelIdRef.current = xp?.levelId;
+  }, [xp]);
 
   const handleToggleWatched = useCallback(() => {
     if (!lesson) return;

@@ -12,8 +12,8 @@ import { Settings, CreditCard, LogOut, Trophy, PlayCircle, Calendar, Camera, Che
 import { useWatchedProgress } from "@/hooks/useWatchedProgress";
 import { motion } from "framer-motion";
 import type { Easing } from "framer-motion";
-import { getLevel } from "@/data/levels";
 import { useProfileCompletion, notifyProfileUpdated } from "@/hooks/useProfileCompletion";
+import { useUserXP } from "@/hooks/useUserXP";
 
 const easeOut: Easing = [0, 0, 0.2, 1];
 const fadeUp = {
@@ -73,8 +73,9 @@ export default function ProfilePage() {
   const [editingWebsite, setEditingWebsite] = useState(false);
   const [editingOccupation, setEditingOccupation] = useState(false);
 
-  const userPoints = 750;
-  const myLevel = getLevel(userPoints);
+  const { data: xp } = useUserXP();
+  const userPoints = xp?.xpTotal ?? 0;
+  const myLevel = xp?.level ?? { name: "מתעניין", icon: "🌱", progress: 0, pointsToNext: 100, nextLvl: null, min: 0, rank: 1 };
   const { watchedCount, totalCount } = useWatchedProgress("recording");
   const joinDate = new Date("2026-01-01");
   const daysInCommunity = Math.floor((Date.now() - joinDate.getTime()) / (1000 * 60 * 60 * 24));

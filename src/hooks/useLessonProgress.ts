@@ -97,6 +97,8 @@ export function useLessonProgress(courseId: string | undefined) {
       });
       // Also invalidate the courses list so progress updates there
       queryClient.invalidateQueries({ queryKey: ["courses"] });
+      // Refresh XP data (DB trigger awards XP on lesson_progress insert)
+      queryClient.invalidateQueries({ queryKey: ["user-xp"] });
     },
   });
 
