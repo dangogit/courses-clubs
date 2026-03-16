@@ -20,6 +20,13 @@ import { useCreatePost } from "@/hooks/useCreatePost";
 import { useJoinGroup } from "@/hooks/useJoinGroup";
 import { useLeaveGroup } from "@/hooks/useLeaveGroup";
 import { formatRelativeTime } from "@/lib/formatRelativeTime";
+import { TierBadge } from "@/components/TierBadge";
+import { LockOverlay } from "@/components/LockOverlay";
+import { AdminTierSelector } from "@/components/AdminTierSelector";
+import { useUserTier } from "@/hooks/useUserTier";
+import { useAdminSetContentTier } from "@/hooks/useAdminSetContentTier";
+import { canAccess } from "@/lib/tiers";
+import { useAdmin } from "@/contexts/AdminContext";
 
 export default function GroupDetail() {
   const { groupId } = useParams() as { groupId: string };
@@ -30,6 +37,9 @@ export default function GroupDetail() {
   const createPost = useCreatePost();
   const joinGroup = useJoinGroup();
   const leaveGroup = useLeaveGroup();
+  const { data: userTier = 0 } = useUserTier();
+  const { isAdmin } = useAdmin();
+  const setContentTier = useAdminSetContentTier();
 
   const [composerOpen, setComposerOpen] = useState(false);
   const [newPostText, setNewPostText] = useState("");
@@ -56,6 +66,7 @@ export default function GroupDetail() {
   }
 
   const coverImage = group.banner_url ?? group.thumbnail_url ?? "/assets/groups/default.jpg";
+  const isLocked = !canAccess(userTier, group.min_tier_level);
 
   const handlePublish = () => {
     if (!newPostText.trim()) return;
@@ -109,23 +120,52 @@ export default function GroupDetail() {
               <Badge variant="secondary" className="bg-background/80 backdrop-blur-sm text-foreground text-[10px] mb-2">
                 {group.is_private ? <><Lock className="h-3 w-3 ml-1" /> פרטית</> : <><Globe className="h-3 w-3 ml-1" /> ציבורית</>}
               </Badge>
-              <h1 className="text-2xl font-bold text-white drop-shadow-lg">{group.name}</h1>
+              <div className="flex items-center gap-2 mb-1">
+                <h1 className="text-2xl font-bold text-white drop-shadow-lg">{group.name}</h1>
+                <TierBadge tierLevel={group.min_tier_level} size="md" />
+              </div>
               <div className="flex items-center gap-3 mt-1 text-xs text-white/80">
                 <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" /> {group.memberCount} חברים</span>
               </div>
             </div>
-            <Button
-              size="sm"
-              variant={group.isMember ? "outline" : "default"}
-              className={`rounded-full text-xs h-9 px-5 ${group.isMember ? "bg-background/80 backdrop-blur-sm border-white/30 text-white hover:bg-background/60" : "gradient-primary shadow-lg"}`}
-              onClick={handleToggleMembership}
-              disabled={joinGroup.isPending || leaveGroup.isPending}
-            >
-              {group.isMember ? <><BellOff className="h-3.5 w-3.5 ml-1" /> עזיבת קבוצה</> : <><Bell className="h-3.5 w-3.5 ml-1" /> הצטרפות לקבוצה</>}
-            </Button>
+            {isLocked ? (
+              <Button
+                size="sm"
+                className="rounded-full text-xs h-9 px-5 bg-muted text-muted-foreground cursor-not-allowed"
+                disabled
+              >
+                <Lock className="h-3.5 w-3.5 ms-1" /> שדרגו כדי להצטרף
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                variant={group.isMember ? "outline" : "default"}
+                className={`rounded-full text-xs h-9 px-5 ${group.isMember ? "bg-background/80 backdrop-blur-sm border-white/30 text-white hover:bg-background/60" : "gradient-primary shadow-lg"}`}
+                onClick={handleToggleMembership}
+                disabled={joinGroup.isPending || leaveGroup.isPending}
+              >
+                {group.isMember ? <><BellOff className="h-3.5 w-3.5 ms-1" /> עזיבת קבוצה</> : <><Bell className="h-3.5 w-3.5 ms-1" /> הצטרפות לקבוצה</>}
+              </Button>
+            )}
           </div>
         </div>
       </div>
+
+      {/* Lock overlay banner */}
+      {isLocked && (
+        <LockOverlay variant="detail" requiredTierLevel={group.min_tier_level} userTierLevel={userTier} />
+      )}
+
+      {/* Admin tier selector */}
+      {isAdmin && group && (
+        <div className="mt-4">
+          <AdminTierSelector
+            currentTierLevel={group.min_tier_level}
+            onTierChange={(level) => setContentTier.mutate({ table: "groups", contentId: group.id, tierLevel: level })}
+            disabled={setContentTier.isPending}
+          />
+        </div>
+      )}
 
       {/* Group info card: description */}
       <div className="bg-card/80 backdrop-blur-sm rounded-2xl p-5 card-shadow border border-border/50 space-y-4">
@@ -135,8 +175,8 @@ export default function GroupDetail() {
         </div>
       </div>
 
-      {/* Create Post */}
-      <div className="bg-card/80 backdrop-blur-sm rounded-2xl card-shadow border border-border/50 overflow-hidden">
+      {/* Create Post — hidden when locked */}
+      {!isLocked && <div className="bg-card/80 backdrop-blur-sm rounded-2xl card-shadow border border-border/50 overflow-hidden">
         {!composerOpen ? (
           <div className="p-4">
             <div className="flex items-center gap-3">
@@ -234,7 +274,7 @@ export default function GroupDetail() {
             </div>
           </div>
         )}
-      </div>
+      </div>}
 
       {/* Sorting */}
       <div className="flex items-center gap-2">

@@ -16,6 +16,13 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCourse } from "@/hooks/useCourse";
 import { useLessonProgress } from "@/hooks/useLessonProgress";
+import { TierBadge } from "@/components/TierBadge";
+import { LockOverlay } from "@/components/LockOverlay";
+import { AdminTierSelector } from "@/components/AdminTierSelector";
+import { useUserTier } from "@/hooks/useUserTier";
+import { useAdminSetLessonTier } from "@/hooks/useAdminSetLessonTier";
+import { canAccess, getEffectiveTierLevel } from "@/lib/tiers";
+import { useAdmin } from "@/contexts/AdminContext";
 import confetti from "canvas-confetti";
 import { toast } from "sonner";
 import CommentsSection, { type Comment } from "@/components/CommentsSection";
@@ -46,6 +53,9 @@ export default function LessonDetail() {
   const { data: courseData, isLoading: courseLoading } = useCourse(id);
   const { completedLessonIds, isCompleted, toggleProgress, isToggling, isLoading: progressLoading } = useLessonProgress(id);
   const { data: xp } = useUserXP();
+  const { data: userTier = 0 } = useUserTier();
+  const { isAdmin } = useAdmin();
+  const setLessonTier = useAdminSetLessonTier(id);
 
   const course = courseData;
   const lessons = useMemo(() => course?.lessons ?? [], [course]);
@@ -53,6 +63,9 @@ export default function LessonDetail() {
   const lessonIndex = useMemo(() => lessons.findIndex((l) => l.id === lessonId), [lessons, lessonId]);
 
   const watched = lesson ? isCompleted(lesson.id) : false;
+
+  const effectiveTier = getEffectiveTierLevel(lesson?.min_tier_level, course?.min_tier_level ?? 0);
+  const isLessonLocked = !canAccess(userTier, effectiveTier);
 
   // Level-up detection: compare previous levelId with current
   const prevLevelIdRef = useRef(xp?.levelId);
@@ -139,89 +152,112 @@ export default function LessonDetail() {
               </Badge>
             )}
           </div>
-          <h1 className="font-display text-xl md:text-2xl font-bold leading-tight mb-2">{lesson.title}</h1>
-          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="font-display text-xl md:text-2xl font-bold leading-tight">{lesson.title}</h1>
+            <TierBadge tierLevel={effectiveTier} size="md" />
+          </div>
+          <div className="flex items-center gap-3 text-xs text-muted-foreground mt-2">
             <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> {lesson.duration_label}</span>
             <span className="flex items-center gap-1"><BookOpen className="h-3 w-3" /> {course.title}</span>
           </div>
+          {isAdmin && (
+            <div className="mt-3">
+              <AdminTierSelector
+                showInherited
+                currentTierLevel={lesson.min_tier_level ?? -1}
+                onTierChange={(level) =>
+                  setLessonTier.mutate({ lessonId: lesson.id, tierLevel: level })
+                }
+                disabled={setLessonTier.isPending}
+              />
+            </div>
+          )}
         </div>
 
-        {/* Video Player */}
-        <BunnyPlayer
-          videoUrl={lesson.video_url}
-          theaterMode={theaterMode}
-          durationLabel={lesson.duration_label ?? undefined}
-        />
-
-        {/* Action bar */}
-        <div className="flex items-center gap-2 mb-5">
-          {/* Watched toggle */}
-          <button
-            onClick={handleToggleWatched}
-            disabled={isToggling}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-all duration-300 cursor-pointer ${
-              watched
-                ? "bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/30"
-                : "bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/30"
-            } ${isToggling ? "opacity-70" : ""}`}
-          >
-            {watched ? <CheckCircle2 className="h-4.5 w-4.5" /> : <Play className="h-4.5 w-4.5" />}
-            {watched ? "נצפה" : "סיימתי לצפות"}
-          </button>
-
-          <div className="flex items-center gap-1 mr-auto">
-            <button
-              onClick={() => setBookmarked(!bookmarked)}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer ${
-                bookmarked ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-primary hover:bg-primary/10"
-              }`}
-            >
-              <Bookmark className={`h-4 w-4 ${bookmarked ? "fill-current" : ""}`} />
-            </button>
-            <button
-              onClick={() => navigator.clipboard.writeText(window.location.href)}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all cursor-pointer"
-            >
-              <Share2 className="h-4 w-4" />
-            </button>
-            <button
-              onClick={() => setTheaterMode(t => !t)}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer ${
-                theaterMode ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-primary hover:bg-primary/10"
-              }`}
-              title={theaterMode ? "יציאה ממצב תיאטרון" : "מצב תיאטרון"}
-            >
-              {theaterMode ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-            </button>
+        {/* Video Player or Lock Overlay */}
+        {isLessonLocked ? (
+          <div className="mb-5">
+            <LockOverlay variant="detail" requiredTierLevel={effectiveTier} userTierLevel={userTier} />
           </div>
+        ) : (
+          <BunnyPlayer
+            videoUrl={lesson.video_url}
+            theaterMode={theaterMode}
+            durationLabel={lesson.duration_label ?? undefined}
+          />
+        )}
 
-          {/* Prev/Next */}
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={!prevLesson}
-              onClick={() => prevLesson && router.push(`/courses/${id}/lesson/${prevLesson.id}`)}
-              className="text-xs gap-1 cursor-pointer"
+        {/* Action bar — hidden when lesson is locked */}
+        {!isLessonLocked && (
+          <div className="flex items-center gap-2 mb-5">
+            {/* Watched toggle */}
+            <button
+              onClick={handleToggleWatched}
+              disabled={isToggling}
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold transition-all duration-300 cursor-pointer ${
+                watched
+                  ? "bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/30"
+                  : "bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/30"
+              } ${isToggling ? "opacity-70" : ""}`}
             >
-              <ChevronRight className="h-3.5 w-3.5" />
-              הקודם
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={!nextLesson}
-              onClick={() => nextLesson && router.push(`/courses/${id}/lesson/${nextLesson.id}`)}
-              className="text-xs gap-1 cursor-pointer"
-            >
-              הבא
-              <ChevronRight className="h-3.5 w-3.5 rotate-180" />
-            </Button>
+              {watched ? <CheckCircle2 className="h-4.5 w-4.5" /> : <Play className="h-4.5 w-4.5" />}
+              {watched ? "נצפה" : "סיימתי לצפות"}
+            </button>
+
+            <div className="flex items-center gap-1 mr-auto">
+              <button
+                onClick={() => setBookmarked(!bookmarked)}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer ${
+                  bookmarked ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-primary hover:bg-primary/10"
+                }`}
+              >
+                <Bookmark className={`h-4 w-4 ${bookmarked ? "fill-current" : ""}`} />
+              </button>
+              <button
+                onClick={() => navigator.clipboard.writeText(window.location.href)}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium text-muted-foreground hover:text-primary hover:bg-primary/10 transition-all cursor-pointer"
+              >
+                <Share2 className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setTheaterMode(t => !t)}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer ${
+                  theaterMode ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-primary hover:bg-primary/10"
+                }`}
+                title={theaterMode ? "יציאה ממצב תיאטרון" : "מצב תיאטרון"}
+              >
+                {theaterMode ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+              </button>
+            </div>
+
+            {/* Prev/Next */}
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={!prevLesson}
+                onClick={() => prevLesson && router.push(`/courses/${id}/lesson/${prevLesson.id}`)}
+                className="text-xs gap-1 cursor-pointer"
+              >
+                <ChevronRight className="h-3.5 w-3.5" />
+                הקודם
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={!nextLesson}
+                onClick={() => nextLesson && router.push(`/courses/${id}/lesson/${nextLesson.id}`)}
+                className="text-xs gap-1 cursor-pointer"
+              >
+                הבא
+                <ChevronRight className="h-3.5 w-3.5 rotate-180" />
+              </Button>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Watched confirmation */}
-        {watched && (
+        {watched && !isLessonLocked && (
           <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl px-4 py-3 mb-5">
             <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
             <p className="text-sm font-medium text-emerald-700 dark:text-emerald-400">

@@ -3,7 +3,7 @@
 import { useRouter, useParams } from "next/navigation";
 import { useState } from "react";
 import {
-  Calendar as CalIcon, CalendarPlus, Clock, MapPin, Timer, Users,
+  Calendar as CalIcon, CalendarPlus, Clock, Lock, MapPin, Timer, Users,
   ArrowRight, MessageSquare, Send, Heart, Share2, Check, Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,13 @@ import { useEventRsvp } from "@/hooks/useEventRsvp";
 import { downloadICS, sanitizeFilename } from "@/lib/calendar";
 import { club } from "@/config/club";
 import { getDateStr, getTimeStr, useCountdown, formatDay, formatDateShort } from "@/lib/dateUtils";
+import { TierBadge } from "@/components/TierBadge";
+import { LockOverlay } from "@/components/LockOverlay";
+import { AdminTierSelector } from "@/components/AdminTierSelector";
+import { useUserTier } from "@/hooks/useUserTier";
+import { useAdminSetContentTier } from "@/hooks/useAdminSetContentTier";
+import { canAccess } from "@/lib/tiers";
+import { useAdmin } from "@/contexts/AdminContext";
 
 const typeStyles: Record<string, string> = {
   "הרצאה": "bg-blue-500/10 text-blue-600 border-blue-500/30",
@@ -53,6 +60,9 @@ export default function EventDetailPage() {
   const { data: event, isLoading, error } = useEvent(id);
   const { toggleRsvp, isToggling } = useEventRsvp(id);
   const { data: allEvents } = useEvents();
+  const { data: userTier = 0 } = useUserTier();
+  const { isAdmin } = useAdmin();
+  const setContentTier = useAdminSetContentTier();
   const timeLeft = useCountdown(event?.starts_at ?? "");
   const [comments, setComments] = useState(mockComments);
   const [newComment, setNewComment] = useState("");
@@ -81,6 +91,7 @@ export default function EventDetailPage() {
   const dateStr = getDateStr(event.starts_at);
   const timeStr = getTimeStr(event.starts_at);
   const isFull = event.max_attendees !== null && event.rsvpCount >= event.max_attendees;
+  const isLocked = !canAccess(userTier, event.min_tier_level);
 
   const addComment = () => {
     if (!newComment.trim()) return;
@@ -116,6 +127,22 @@ export default function EventDetailPage() {
         <span>חזרה ללוח אירועים</span>
       </button>
 
+      {/* Lock overlay banner */}
+      {isLocked && (
+        <LockOverlay variant="detail" requiredTierLevel={event.min_tier_level} userTierLevel={userTier} />
+      )}
+
+      {/* Admin tier selector */}
+      {isAdmin && event && (
+        <div className="mt-4">
+          <AdminTierSelector
+            currentTierLevel={event.min_tier_level}
+            onTierChange={(level) => setContentTier.mutate({ table: "events", contentId: event.id, tierLevel: level })}
+            disabled={setContentTier.isPending}
+          />
+        </div>
+      )}
+
       {/* Header card */}
       <div className="bg-card/80 backdrop-blur-sm rounded-2xl card-shadow border border-border/50 overflow-hidden">
         {/* Top section with speaker */}
@@ -145,6 +172,7 @@ export default function EventDetailPage() {
                 {event.event_type && (
                   <Badge variant="outline" className={`text-[10px] ${typeCls}`}>{event.event_type}</Badge>
                 )}
+                <TierBadge tierLevel={event.min_tier_level} size="md" />
                 {!isPast && (
                   <div className="flex items-center gap-1.5 text-xs font-bold text-primary bg-primary/10 px-3 py-1 rounded-full">
                     <Timer className="h-3 w-3" />
@@ -180,25 +208,35 @@ export default function EventDetailPage() {
 
           <div className="flex-1" />
 
-          <Button
-            size="sm"
-            className={`min-w-[130px] rounded-xl gap-1.5 text-xs font-bold ${
-              isFull && !event.isRsvped
-                ? "bg-muted text-muted-foreground cursor-not-allowed"
+          {isLocked ? (
+            <Button
+              size="sm"
+              className="min-w-[130px] rounded-xl gap-1.5 text-xs font-bold bg-muted text-muted-foreground cursor-not-allowed"
+              disabled
+            >
+              <Lock className="h-3.5 w-3.5" /> שדרגו כדי להירשם
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              className={`min-w-[130px] rounded-xl gap-1.5 text-xs font-bold ${
+                isFull && !event.isRsvped
+                  ? "bg-muted text-muted-foreground cursor-not-allowed"
+                  : event.isRsvped
+                    ? "bg-emerald-600 hover:bg-emerald-700"
+                    : "gradient-primary hover:opacity-90"
+              }`}
+              onClick={() => toggleRsvp()}
+              disabled={isToggling || (isFull && !event.isRsvped)}
+            >
+              {isFull && !event.isRsvped
+                ? "האירוע מלא"
                 : event.isRsvped
-                  ? "bg-emerald-600 hover:bg-emerald-700"
-                  : "gradient-primary hover:opacity-90"
-            }`}
-            onClick={() => toggleRsvp()}
-            disabled={isToggling || (isFull && !event.isRsvped)}
-          >
-            {isFull && !event.isRsvped
-              ? "האירוע מלא"
-              : event.isRsvped
-                ? <><Check className="h-3.5 w-3.5" /> נרשמת!</>
-                : <><Sparkles className="h-3.5 w-3.5" /> הרשמה לאירוע</>
-            }
-          </Button>
+                  ? <><Check className="h-3.5 w-3.5" /> נרשמת!</>
+                  : <><Sparkles className="h-3.5 w-3.5" /> הרשמה לאירוע</>
+              }
+            </Button>
+          )}
 
           <Button
             variant="outline"

@@ -5,7 +5,7 @@ import Link from "next/link";
 import {
   ChevronRight, BookOpen, Clock, CheckCircle, Play,
   Sparkles, ArrowLeft, GraduationCap, Target, Users, BarChart3, ChevronDown, ChevronUp,
-  Trophy, PartyPopper, Star
+  Trophy, PartyPopper, Star, Lock
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,14 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCourse } from "@/hooks/useCourse";
 import { useLessonProgress } from "@/hooks/useLessonProgress";
+import { TierBadge } from "@/components/TierBadge";
+import { LockOverlay } from "@/components/LockOverlay";
+import { AdminTierSelector } from "@/components/AdminTierSelector";
+import { useUserTier } from "@/hooks/useUserTier";
+import { useAdminSetContentTier } from "@/hooks/useAdminSetContentTier";
+import { useAdminSetLessonTier } from "@/hooks/useAdminSetLessonTier";
+import { canAccess, getEffectiveTierLevel } from "@/lib/tiers";
+import { useAdmin } from "@/contexts/AdminContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useRef } from "react";
 import confetti from "canvas-confetti";
@@ -169,6 +177,10 @@ export default function CourseDetail() {
   const router = useRouter();
   const { data: courseData, isLoading: courseLoading } = useCourse(id);
   const { completedLessonIds, isCompleted: isLessonCompleted, isLoading: progressLoading } = useLessonProgress(id);
+  const { data: userTier = 0 } = useUserTier();
+  const { isAdmin } = useAdmin();
+  const setContentTier = useAdminSetContentTier();
+  const setLessonTier = useAdminSetLessonTier(id);
   const [showAllLessons, setShowAllLessons] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
   const hasTriggered = useRef(false);
@@ -221,6 +233,7 @@ export default function CourseDetail() {
   const nextLesson = lessons.find((l) => !completedLessonIds.has(l.id));
   const ctaLabel = lessonsCompleted === 0 ? "התחילו ללמוד" : "המשיכו ללמוד";
   const about = courseAbout[course.order_index] ?? courseAbout[0];
+  const isLocked = !canAccess(userTier, course.min_tier_level);
   const COLLAPSED_COUNT = 6;
   const visibleLessons = showAllLessons ? lessons : lessons.slice(0, COLLAPSED_COUNT);
   const hasMore = totalLessons > COLLAPSED_COUNT;
@@ -314,6 +327,7 @@ export default function CourseDetail() {
                   <Badge className="bg-primary-foreground/10 text-primary-foreground/80 border-0 text-[10px] backdrop-blur-sm">
                     {about.level}
                   </Badge>
+                  <TierBadge tierLevel={course.min_tier_level} size="md" />
                 </div>
                 <h1 className="font-display text-2xl lg:text-3xl font-bold mb-2 leading-tight">{course.title}</h1>
                 <p className="text-primary-foreground/75 text-sm lg:text-base mb-5 leading-relaxed max-w-xl">{course.description}</p>
@@ -323,12 +337,28 @@ export default function CourseDetail() {
                   <span className="flex items-center gap-1.5"><BarChart3 className="h-3.5 w-3.5" /> {about.level}</span>
                   <span className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> {about.audience}</span>
                 </div>
+                {isAdmin && (
+                  <div className="mt-4">
+                    <AdminTierSelector
+                      currentTierLevel={course.min_tier_level}
+                      onTierChange={(level) =>
+                        setContentTier.mutate({ table: "courses", contentId: course.id, tierLevel: level })
+                      }
+                      disabled={setContentTier.isPending}
+                    />
+                  </div>
+                )}
               </div>
               <div className="shrink-0 hidden sm:block">
                 <CircularProgress percent={progressPercent} size={96} />
               </div>
             </div>
           </motion.div>
+
+          {/* Lock overlay banner when user cannot access */}
+          {isLocked && (
+            <LockOverlay variant="detail" requiredTierLevel={course.min_tier_level} userTierLevel={userTier} />
+          )}
 
           {/* ABOUT SECTION */}
           <motion.div
@@ -422,6 +452,8 @@ export default function CourseDetail() {
               {visibleLessons.map((lesson, i) => {
                 const completed = isLessonCompleted(lesson.id);
                 const isNext = nextLesson?.id === lesson.id;
+                const effectiveTier = getEffectiveTierLevel(lesson.min_tier_level, course.min_tier_level);
+                const lessonLocked = !canAccess(userTier, effectiveTier);
                 return (
                   <motion.div
                     key={lesson.id}
@@ -439,13 +471,17 @@ export default function CourseDetail() {
                   >
                     {/* Circle */}
                     <div className={`shrink-0 w-8 h-8 rounded-full border-2 flex items-center justify-center transition-colors ${
-                      completed
+                      lessonLocked
+                        ? "border-border/60 bg-muted"
+                        : completed
                         ? "bg-primary border-primary"
                         : isNext
                         ? "border-primary/60 bg-primary/10"
                         : "border-border/60 bg-background group-hover:border-primary/40"
                     }`}>
-                      {completed
+                      {lessonLocked
+                        ? <Lock className="h-3.5 w-3.5 text-muted-foreground" />
+                        : completed
                         ? <CheckCircle className="h-4 w-4 text-primary-foreground" />
                         : isNext
                         ? <Play className="h-3.5 w-3.5 text-primary fill-primary" />
@@ -455,9 +491,14 @@ export default function CourseDetail() {
 
                     {/* Info */}
                     <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-medium truncate ${completed ? "text-primary" : isNext ? "font-semibold" : ""}`}>
-                        {lesson.title}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className={`text-sm font-medium truncate ${lessonLocked ? "text-muted-foreground" : completed ? "text-primary" : isNext ? "font-semibold" : ""}`}>
+                          {lesson.title}
+                        </p>
+                        {lesson.min_tier_level !== null && (
+                          <TierBadge tierLevel={effectiveTier} size="sm" />
+                        )}
+                      </div>
                       <p className="text-xs text-muted-foreground truncate mt-0.5">{lesson.description}</p>
                     </div>
 
@@ -466,12 +507,26 @@ export default function CourseDetail() {
                       <span className="text-xs text-muted-foreground flex items-center gap-1">
                         <Clock className="h-3 w-3" />{lesson.duration_label}
                       </span>
-                      {isNext && (
+                      {isNext && !lessonLocked && (
                         <span className="hidden sm:inline-flex items-center gap-1 text-[10px] font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded-full">
                           הבא
                         </span>
                       )}
                     </div>
+
+                    {/* Admin tier selector for lesson */}
+                    {isAdmin && (
+                      <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+                        <AdminTierSelector
+                          showInherited
+                          currentTierLevel={lesson.min_tier_level ?? -1}
+                          onTierChange={(level) =>
+                            setLessonTier.mutate({ lessonId: lesson.id, tierLevel: level })
+                          }
+                          disabled={setLessonTier.isPending}
+                        />
+                      </div>
+                    )}
                   </motion.div>
                 );
               })}

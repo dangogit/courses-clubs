@@ -1,5 +1,18 @@
--- Seed data: 15 levels (matches src/data/levels.ts)
--- Applied once per club via `supabase db seed`
+-- Seed data: applied once per club via `supabase db seed`
+
+-- =============================================================================
+-- Tiers (3 default subscription tiers)
+-- =============================================================================
+
+INSERT INTO tiers (level, name, description, color) VALUES
+  (0, 'חינם', 'גישה בסיסית לתכני המועדון', '120 60% 40%'),
+  (1, 'בסיסי', 'גישה לתכנים בסיסיים ומתקדמים', '195 100% 42%'),
+  (2, 'פרימיום', 'גישה מלאה לכל תכני המועדון', '45 100% 50%')
+ON CONFLICT (level) DO NOTHING;
+
+-- =============================================================================
+-- Levels (15 XP levels — matches src/data/levels.ts)
+-- =============================================================================
 
 INSERT INTO levels (id, title, xp_required, icon, badge_url, color) VALUES
   (1,  'מתעניין',       0,      '🌱', NULL, NULL),

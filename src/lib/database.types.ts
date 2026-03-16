@@ -653,6 +653,33 @@ export type Database = {
           },
         ]
       }
+      tiers: {
+        Row: {
+          color: string | null
+          created_at: string
+          description: string | null
+          id: number
+          level: number
+          name: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          id?: never
+          level: number
+          name: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          id?: never
+          level?: number
+          name?: string
+        }
+        Relationships: []
+      }
       xp_events: {
         Row: {
           amount: number
@@ -685,6 +712,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_set_content_tier: {
+        Args: {
+          p_content_id: string
+          p_table_name: string
+          p_tier_level: number
+        }
+        Returns: undefined
+      }
+      admin_set_lesson_tier: {
+        Args: { p_lesson_id: string; p_tier_level: number }
+        Returns: undefined
+      }
+      admin_set_tier_level: {
+        Args: { new_level: number; target_user_id: string }
+        Returns: undefined
+      }
       get_leaderboard: {
         Args: { p_period?: string }
         Returns: {
