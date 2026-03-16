@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
+import { toast } from "sonner";
 import type { EventDetail } from "@/hooks/useEvents";
 
 export function useEventRsvp(eventId: string) {
@@ -58,6 +59,7 @@ export function useEventRsvp(eventId: string) {
       if (context?.previous) {
         queryClient.setQueryData(["events", eventId], context.previous);
       }
+      toast.error("שגיאה", { description: "לא ניתן להירשם לאירוע. נסה שוב." });
     },
 
     onSettled: () => {
