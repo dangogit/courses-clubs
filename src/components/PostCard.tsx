@@ -31,7 +31,6 @@ import {
   Trash2,
 } from "lucide-react";
 
-const CURRENT_USER = "לי ברקוביץ";
 import CommentComposer, { type Attachment } from "@/components/CommentComposer";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -65,6 +64,7 @@ const POST_TYPE_CONFIG: Record<PostType, { label: string; icon: React.FC<{ class
 interface NestedReply {
   id: number;
   author: string;
+  authorId?: string;
   avatar: string;
   time: string;
   text: string;
@@ -76,6 +76,7 @@ interface NestedReply {
 interface Comment {
   id: number;
   author: string;
+  authorId?: string;
   avatar: string;
   time: string;
   text: string;
@@ -85,7 +86,8 @@ interface Comment {
 }
 
 export interface PostData {
-  id: number;
+  id: string;
+  authorId?: string;
   author: string;
   avatar: string;
   role: string | null;
@@ -98,14 +100,16 @@ export interface PostData {
   aiSummary?: string;
   tags?: string[];
   reactions?: Record<string, number>;
+  userReactions?: string[];
   codeBlock?: string;
   image?: string;
   images?: string[];
+  groupId?: string | null;
 }
 
 // ─── Mock likers data ────────────────────────────────────────────────────────
 
-const mockPostLikers: Record<number, string[]> = {
+const mockPostLikers: Record<string, string[]> = {
   1: ["שרי רוזנוסר", "גולן", "מאיה ר.", "יובל", "הילה", "דוד לוי", "אלכס ב."],
   2: ["לי ברקוביץ", "דוד לוי", "אלכס ב."],
   3: ["מאיה ר.", "הילה"],
@@ -152,7 +156,7 @@ function LikersPopover({ names, count }: { names: string[]; count: number }) {
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
 
-const mockComments: Record<number, Comment[]> = {
+const mockComments: Record<string, Comment[]> = {
   1: [
     {
       id: 1, author: "שרי רוזנוסר", avatar: "sari", time: "לפני 20 שעות",
@@ -224,15 +228,16 @@ function renderContent(text: string) {
 
 interface CommentItemProps {
   comment: Comment;
-  postId: number;
+  postId: string;
   onLike: (id: number) => void;
   liked: boolean;
   onReply: (author: string, commentId: number) => void;
   onEdit: (commentId: number, newText: string) => void;
   onDelete: (commentId: number, replyId?: number) => void;
+  currentUserId?: string;
 }
 
-function CommentItem({ comment, postId, onLike, liked, onReply, onEdit, onDelete }: CommentItemProps) {
+function CommentItem({ comment, postId, onLike, liked, onReply, onEdit, onDelete, currentUserId }: CommentItemProps) {
   const [showReplies, setShowReplies] = useState(true);
   const [replyLikes, setReplyLikes] = useState<Record<number, boolean>>({});
   const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
@@ -267,7 +272,7 @@ function CommentItem({ comment, postId, onLike, liked, onReply, onEdit, onDelete
 
   const hasReplies = comment.replies && comment.replies.length > 0;
   const likeTotal = comment.likes + (liked ? 1 : 0);
-  const isMyComment = comment.author === CURRENT_USER;
+  const isMyComment = !!(currentUserId && comment.authorId === currentUserId);
 
   return (
     <div className="flex items-start gap-2.5">
@@ -350,7 +355,7 @@ function CommentItem({ comment, postId, onLike, liked, onReply, onEdit, onDelete
         {hasReplies && showReplies && (
           <div className="mt-2.5 space-y-2.5 pr-3 border-r-2 border-primary/20 mr-1">
             {comment.replies!.map((reply) => {
-              const isMyReply = reply.author === CURRENT_USER;
+              const isMyReply = !!(currentUserId && reply.authorId === currentUserId);
               return (
                 <div key={reply.id} className="flex items-start gap-2">
                   <Avatar className="h-6 w-6 shrink-0 mt-0.5">
@@ -435,7 +440,7 @@ function CommentItem({ comment, postId, onLike, liked, onReply, onEdit, onDelete
 
 // ─── Post Menu ────────────────────────────────────────────────────────────────
 
-function PostMenu({ author, postId, isOwner, onEdit, onDelete, onClose, triggerRef }: { author: string; postId: number; isOwner: boolean; onEdit: () => void; onDelete: () => void; onClose: () => void; triggerRef: React.RefObject<HTMLButtonElement | null> }) {
+function PostMenu({ author, postId, isOwner, onEdit, onDelete, onClose, triggerRef }: { author: string; postId: string; isOwner: boolean; onEdit: () => void; onDelete: () => void; onClose: () => void; triggerRef: React.RefObject<HTMLButtonElement | null> }) {
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
 
@@ -511,7 +516,7 @@ const COMMUNITY_MEMBERS = [
 
 // ─── Main PostCard ────────────────────────────────────────────────────────────
 
-export default function PostCard({ post, index, isSaved, onToggleSave }: { post: PostData; index: number; isSaved?: boolean; onToggleSave?: () => void }) {
+export default function PostCard({ post, index, isSaved, onToggleSave, currentUserId }: { post: PostData; index: number; isSaved?: boolean; onToggleSave?: () => void; currentUserId?: string }) {
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(post.likes);
   const bookmarked = isSaved ?? false;
@@ -606,7 +611,7 @@ export default function PostCard({ post, index, isSaved, onToggleSave }: { post:
 
   const [deletingPost, setDeletingPost] = useState(false);
   const [postEdited, setPostEdited] = useState(false);
-  const isMyPost = post.author === CURRENT_USER;
+  const isMyPost = !!(currentUserId && post.authorId === currentUserId);
 
   const totalReactions = Object.values(reactionCounts).reduce((s, v) => s + v, 0);
   const postTypeConfig = post.postType ? POST_TYPE_CONFIG[post.postType] : null;
@@ -858,6 +863,7 @@ export default function PostCard({ post, index, isSaved, onToggleSave }: { post:
                 onReply={handleSetReply}
                 onEdit={handleEditComment}
                 onDelete={handleDeleteComment}
+                currentUserId={currentUserId}
               />
             ))}
 

@@ -184,3 +184,16 @@ INSERT INTO recordings (title, description, duration_label, duration_minutes, sp
   ('סרטוני Reels ו-TikTok עם AI', 'יצירת סרטונים קצרים ומעניינים לרשתות חברתיות בעזרת כלי AI', '42 דק׳', 42, 'מיכל ת.', 'michal', '2025-09-25', ARRAY['יצירת סרטונים', 'ליוצרי תוכן'], 1150, 34, true),
   ('בניית דף נחיתה עם AI בשעה', 'מדריך מעשי לבניית דף נחיתה מקצועי תוך שעה עם כלי וייב קודינג', '58 דק׳', 58, 'עדן ביבס', 'eden', '2025-09-20', ARRAY['Vibe Coding', 'בעלי עסקים'], 1320, 35, true)
 ON CONFLICT (order_index) DO NOTHING;
+
+-- =============================================================================
+-- Groups (matches src/data/groups.ts)
+-- =============================================================================
+
+INSERT INTO groups (name, description, category, is_private, min_tier_level, banner_url) VALUES
+  ('Prompt Engineering', 'הקבוצה הזו מוקדשת לכל מי שרוצה לשלוט באמנות הפרומפטינג. כאן נלמד טכניקות מתקדמות כמו Chain of Thought, Few-Shot Learning, ועוד שיטות שיעזרו לכם לקבל תוצאות מדהימות מכל מודל שפה. נשתף דוגמאות, טיפים ותבניות מוכנות.', 'prompt-engineering', false, 0, '/assets/groups/prompt-engineering.jpg'),
+  ('AI לעסקים', 'קבוצה ליזמים, מנהלים ובעלי עסקים שרוצים לשלב AI בעבודה היומיומית. נדבר על אוטומציה של תהליכים, שימוש ב-AI לשיווק, מכירות, שירות לקוחות וניהול – הכל עם דוגמאות מעשיות ותוצאות אמיתיות.', 'business', false, 0, '/assets/groups/ai-business.jpg'),
+  ('בוני צ׳אטבוטים', 'הקבוצה לכל מי שבונה או רוצה לבנות צ׳אטבוטים וסוכני AI. נלמד איך לחבר API-ים, לבנות לוגיקת שיחה, לאמן מודלים על מידע ספציפי ולפרוס בוטים שמשרתים אלפי משתמשים.', 'chatbots', false, 0, '/assets/groups/chatbots.jpg'),
+  ('AI ועיצוב', 'קבוצה ליוצרים ומעצבים שמשתמשים ב-AI לעיצוב. נשתף טכניקות ב-Midjourney, DALL-E, Stable Diffusion, כלי וידאו AI, ועוד. מושלם למי שרוצה לשלב יצירתיות עם טכנולוגיה.', 'design', false, 0, '/assets/groups/ai-design.jpg'),
+  ('למידת מכונה מתקדמת', 'קבוצה למתקדמים שרוצים לצלול לעומק של למידת מכונה. נדבר על ארכיטקטורות מודלים, Fine-Tuning, MLOps, ופריסה בענן. ידע בתכנות מומלץ אבל לא חובה.', 'machine-learning', true, 0, '/assets/groups/machine-learning.jpg'),
+  ('No-Code AI', 'הקבוצה לכל מי שרוצה להשתמש ב-AI בלי לגעת בקוד. נלמד על פלטפורמות No-Code כמו Make, Zapier, Bubble ועוד, ואיך לבנות אוטומציות חזקות שחוסכות שעות עבודה בלי ידע טכני.', 'no-code', false, 0, '/assets/groups/nocode-ai.jpg')
+ON CONFLICT (name) DO NOTHING;

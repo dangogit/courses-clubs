@@ -5,6 +5,8 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { X, Image, AtSign, Globe, ChevronDown, Video, Link as LinkIcon, Trash2 } from "lucide-react";
+import { useCreatePost } from "@/hooks/useCreatePost";
+import { toast } from "sonner";
 
 const COMMUNITY_MEMBERS = [
   { name: "עדן ביבס", seed: "eden" },
@@ -29,9 +31,10 @@ interface Attachment {
 interface CreatePostDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  groupId?: string | null;
 }
 
-export default function CreatePostDialog({ open, onOpenChange }: CreatePostDialogProps) {
+export default function CreatePostDialog({ open, onOpenChange, groupId }: CreatePostDialogProps) {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [attachments, setAttachments] = useState<Attachment[]>([]);
@@ -43,16 +46,35 @@ export default function CreatePostDialog({ open, onOpenChange }: CreatePostDialo
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const createPost = useCreatePost();
 
   const handlePost = () => {
-    onOpenChange(false);
-    setTitle("");
-    setContent("");
-    setAttachments([]);
-    setShowLinkInput(false);
-    setLinkInput("");
-    setTaggedMembers([]);
-    setShowMentions(false);
+    if (!content.trim() && attachments.length === 0) return;
+
+    createPost.mutate(
+      {
+        content: content.trim(),
+        group_id: groupId ?? null,
+        post_type: null,
+        images: attachments.filter(a => a.type === "image").map(a => a.url),
+      },
+      {
+        onSuccess: () => {
+          onOpenChange(false);
+          setTitle("");
+          setContent("");
+          setAttachments([]);
+          setShowLinkInput(false);
+          setLinkInput("");
+          setTaggedMembers([]);
+          setShowMentions(false);
+          toast.success("הפוסט פורסם!", { description: "הפוסט שלך פורסם בהצלחה" });
+        },
+        onError: () => {
+          toast.error("שגיאה", { description: "לא הצלחנו לפרסם את הפוסט. נסה שוב." });
+        },
+      }
+    );
   };
 
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -294,11 +316,11 @@ export default function CreatePostDialog({ open, onOpenChange }: CreatePostDialo
           <div className="flex items-center gap-2">
             <Button
               onClick={handlePost}
-              disabled={!content.trim() && attachments.length === 0}
+              disabled={(!content.trim() && attachments.length === 0) || createPost.isPending}
               size="sm"
               className="rounded-full px-5 font-bold"
             >
-              פוסט
+              {createPost.isPending ? "מפרסם..." : "פוסט"}
             </Button>
           </div>
         </div>

@@ -161,7 +161,8 @@ posts
   user_id         uuid NOT NULL REFERENCES auth.users ON DELETE CASCADE
   group_id        uuid REFERENCES groups ON DELETE CASCADE   -- null = main feed
   content         text NOT NULL            -- rich text / markdown
-  image_url       text
+  post_type       text                     -- 'question' | 'share' | 'project' | 'achievement' | 'announcement'
+  images          text[]                   -- array of image URLs
   is_pinned       bool DEFAULT false
   created_at      timestamptz DEFAULT now()
   updated_at      timestamptz DEFAULT now()
@@ -170,16 +171,17 @@ post_comments
   id              uuid PRIMARY KEY DEFAULT gen_random_uuid()
   post_id         uuid NOT NULL REFERENCES posts ON DELETE CASCADE
   user_id         uuid NOT NULL REFERENCES auth.users ON DELETE CASCADE
-  parent_id       uuid REFERENCES post_comments  -- for threaded replies
+  parent_id       uuid REFERENCES post_comments ON DELETE CASCADE  -- threaded replies
   content         text NOT NULL            -- rich text
   created_at      timestamptz DEFAULT now()
+  updated_at      timestamptz DEFAULT now()
 
 post_reactions
   user_id         uuid NOT NULL REFERENCES auth.users ON DELETE CASCADE
   post_id         uuid NOT NULL REFERENCES posts ON DELETE CASCADE
-  reaction_type   text DEFAULT 'like'
+  reaction_type   text NOT NULL DEFAULT 'like'
   created_at      timestamptz DEFAULT now()
-  PRIMARY KEY (user_id, post_id)
+  PRIMARY KEY (user_id, post_id, reaction_type)  -- allows multiple reaction types per user per post
 ```
 
 ---
@@ -294,6 +296,7 @@ referrals
 notifications
   id              uuid PRIMARY KEY DEFAULT gen_random_uuid()
   user_id         uuid NOT NULL REFERENCES auth.users ON DELETE CASCADE
+  source_user_id  uuid REFERENCES auth.users ON DELETE SET NULL  -- who triggered it
   type            text NOT NULL
     -- 'reply' | 'like' | 'mention' | 'event_reminder'
     -- 'xp_gain' | 'level_up' | 'payment_failed' | 'payment_success'
