@@ -5,39 +5,46 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowRight, Users, Bell, BellOff, MessageCircle, Globe, Lock,
-  Heart, Share2, Pin, MoreHorizontal, Image, Link as LinkIcon, Bookmark, Crown,
-  X, Send, ImagePlus
+  Heart, Share2, Pin, MoreHorizontal, Image, Link as LinkIcon, Bookmark,
+  X, Send, ImagePlus, Loader2
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { groups, groupPosts } from "@/data/groups";
 import { toast } from "sonner";
-
-type Post = {
-  id: number;
-  author: string;
-  avatar: string;
-  role: string | null;
-  time: string;
-  pinned: boolean;
-  content: string;
-  likes: number;
-  comments: number;
-  image?: string;
-};
+import { useGroup } from "@/hooks/useGroup";
+import { useFeed, type FeedPost } from "@/hooks/useFeed";
+import { useFeedRealtime } from "@/hooks/useFeedRealtime";
+import { useCreatePost } from "@/hooks/useCreatePost";
+import { useJoinGroup } from "@/hooks/useJoinGroup";
+import { useLeaveGroup } from "@/hooks/useLeaveGroup";
+import { formatRelativeTime } from "@/lib/formatRelativeTime";
 
 export default function GroupDetail() {
   const { groupId } = useParams() as { groupId: string };
-  const group = groups.find((g) => g.id === groupId);
-  const initialPosts = groupPosts[groupId || ""] || [];
-  const [joined, setJoined] = useState(false);
-  const [allPosts, setAllPosts] = useState<Post[]>(initialPosts);
+
+  const { data: group, isLoading: groupLoading } = useGroup(groupId);
+  const { data: feedData, isLoading: feedLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useFeed(groupId);
+  useFeedRealtime(groupId);
+  const createPost = useCreatePost();
+  const joinGroup = useJoinGroup();
+  const leaveGroup = useLeaveGroup();
+
   const [composerOpen, setComposerOpen] = useState(false);
   const [newPostText, setNewPostText] = useState("");
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const posts: FeedPost[] = feedData?.pages.flatMap((p) => p.posts) ?? [];
+
+  if (groupLoading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   if (!group) {
     return (
@@ -48,6 +55,43 @@ export default function GroupDetail() {
     );
   }
 
+  const coverImage = group.banner_url ?? group.thumbnail_url ?? "/assets/groups/default.jpg";
+
+  const handlePublish = () => {
+    if (!newPostText.trim()) return;
+    createPost.mutate(
+      { content: newPostText.trim(), group_id: groupId },
+      {
+        onSuccess: () => {
+          setNewPostText("");
+          setPreviewImage(null);
+          setComposerOpen(false);
+          toast.success("הפוסט פורסם!", { description: "הפוסט שלך פורסם בהצלחה בקבוצה" });
+        },
+        onError: () => {
+          toast.error("שגיאה", { description: "לא הצלחנו לפרסם את הפוסט" });
+        },
+      }
+    );
+  };
+
+  const handleToggleMembership = () => {
+    if (group.isMember) {
+      leaveGroup.mutate(groupId);
+    } else {
+      joinGroup.mutate(groupId);
+    }
+  };
+
+  const getPostRoleBadge = (post: FeedPost): string | null => {
+    if (post.author.role === "admin") return "מנהל";
+    if (post.author.role === "moderator") return "מנחה";
+    return null;
+  };
+
+  const getPostReactionTotal = (post: FeedPost): number =>
+    Object.values(post.reactionCounts).reduce((s, v) => s + v, 0);
+
   return (
     <div className="max-w-2xl mx-auto space-y-4">
       {/* Back link */}
@@ -57,52 +101,37 @@ export default function GroupDetail() {
 
       {/* Hero Cover */}
       <div className="relative rounded-2xl overflow-hidden card-shadow border border-border/50">
-        <img src={group.cover} alt={group.name} className="w-full h-48 object-cover" />
+        <img src={coverImage} alt={group.name} className="w-full h-48 object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-foreground/80 via-foreground/30 to-transparent" />
         <div className="absolute bottom-4 right-5 left-5">
           <div className="flex items-end justify-between">
             <div>
               <Badge variant="secondary" className="bg-background/80 backdrop-blur-sm text-foreground text-[10px] mb-2">
-                {group.type === "private" ? <><Lock className="h-3 w-3 ml-1" /> פרטית</> : <><Globe className="h-3 w-3 ml-1" /> ציבורית</>}
+                {group.is_private ? <><Lock className="h-3 w-3 ml-1" /> פרטית</> : <><Globe className="h-3 w-3 ml-1" /> ציבורית</>}
               </Badge>
               <h1 className="text-2xl font-bold text-white drop-shadow-lg">{group.name}</h1>
               <div className="flex items-center gap-3 mt-1 text-xs text-white/80">
-                <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" /> {group.members} חברים</span>
-                <span className="flex items-center gap-1"><MessageCircle className="h-3.5 w-3.5" /> {group.posts} פוסטים</span>
+                <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" /> {group.memberCount} חברים</span>
               </div>
             </div>
             <Button
               size="sm"
-              variant={joined ? "outline" : "default"}
-              className={`rounded-full text-xs h-9 px-5 ${joined ? "bg-background/80 backdrop-blur-sm border-white/30 text-white hover:bg-background/60" : "gradient-primary shadow-lg"}`}
-              onClick={() => setJoined(!joined)}
+              variant={group.isMember ? "outline" : "default"}
+              className={`rounded-full text-xs h-9 px-5 ${group.isMember ? "bg-background/80 backdrop-blur-sm border-white/30 text-white hover:bg-background/60" : "gradient-primary shadow-lg"}`}
+              onClick={handleToggleMembership}
+              disabled={joinGroup.isPending || leaveGroup.isPending}
             >
-              {joined ? <><BellOff className="h-3.5 w-3.5 ml-1" /> בטל התראות</> : <><Bell className="h-3.5 w-3.5 ml-1" /> הצטרפות לקבוצה</>}
+              {group.isMember ? <><BellOff className="h-3.5 w-3.5 ml-1" /> עזיבת קבוצה</> : <><Bell className="h-3.5 w-3.5 ml-1" /> הצטרפות לקבוצה</>}
             </Button>
           </div>
         </div>
       </div>
 
-      {/* Group info card: description + leader */}
+      {/* Group info card: description */}
       <div className="bg-card/80 backdrop-blur-sm rounded-2xl p-5 card-shadow border border-border/50 space-y-4">
         <div>
           <h2 className="font-bold text-sm mb-1.5">אודות הקבוצה</h2>
-          <p className="text-sm text-muted-foreground leading-relaxed">{group.longDescription}</p>
-        </div>
-        <div className="border-t border-border/40 pt-4">
-          <h2 className="font-bold text-sm mb-3 flex items-center gap-1.5">
-            <Crown className="h-4 w-4 text-primary" /> מוביל/ת הקבוצה
-          </h2>
-          <div className="flex items-center gap-3">
-            <Avatar className="h-11 w-11 ring-2 ring-primary/20">
-              <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${group.leader.avatar}`} />
-              <AvatarFallback>{group.leader.name[0]}</AvatarFallback>
-            </Avatar>
-            <div>
-              <p className="font-bold text-sm">{group.leader.name}</p>
-              <p className="text-xs text-muted-foreground">{group.leader.role}</p>
-            </div>
-          </div>
+          <p className="text-sm text-muted-foreground leading-relaxed">{group.description}</p>
         </div>
       </div>
 
@@ -190,29 +219,16 @@ export default function GroupDetail() {
                 </Button>
                 <Button
                   size="sm"
-                  disabled={!newPostText.trim()}
+                  disabled={!newPostText.trim() || createPost.isPending}
                   className="rounded-full text-xs h-8 px-5 gradient-primary shadow-md gap-1.5"
-                  onClick={() => {
-                    const newPost: Post = {
-                      id: Date.now(),
-                      author: "אני",
-                      avatar: "you",
-                      role: null,
-                      time: "עכשיו",
-                      pinned: false,
-                      content: newPostText.trim(),
-                      likes: 0,
-                      comments: 0,
-                      image: previewImage || undefined,
-                    };
-                    setAllPosts((prev) => [newPost, ...prev]);
-                    setNewPostText("");
-                    setPreviewImage(null);
-                    setComposerOpen(false);
-                    toast.success("הפוסט פורסם! 🎉", { description: "הפוסט שלך פורסם בהצלחה בקבוצה" });
-                  }}
+                  onClick={handlePublish}
                 >
-                  <Send className="h-3.5 w-3.5" /> פרסום
+                  {createPost.isPending ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Send className="h-3.5 w-3.5" />
+                  )}
+                  פרסום
                 </Button>
               </div>
             </div>
@@ -227,56 +243,96 @@ export default function GroupDetail() {
       </div>
 
       {/* Posts */}
-      {allPosts.map((post) => (
-        <article
-          key={post.id}
-          className="bg-card/80 backdrop-blur-sm rounded-2xl card-shadow border border-border/50 overflow-hidden"
-        >
-          {post.pinned && (
-            <div className="px-4 py-1.5 bg-accent/60 flex items-center gap-1.5 text-xs text-accent-foreground font-medium">
-              <Pin className="h-3 w-3" /> פוסט נעוץ
-            </div>
-          )}
-          <div className="p-4">
-            <div className="flex items-start gap-3">
-              <Avatar className="h-10 w-10">
-                <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${post.avatar}`} />
-                <AvatarFallback>{post.author[0]}</AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-bold text-sm">{post.author}</span>
-                  {post.role && (
-                    <Badge className="text-[10px] h-5 gradient-primary border-0 font-bold">{post.role}</Badge>
-                  )}
-                  <span className="text-xs text-muted-foreground">· {post.time}</span>
+      {feedLoading ? (
+        <div className="flex items-center justify-center py-10">
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        </div>
+      ) : posts.length === 0 ? (
+        <div className="text-center py-10 text-muted-foreground text-sm">
+          אין פוסטים בקבוצה עדיין. היו הראשונים לפרסם!
+        </div>
+      ) : (
+        posts.map((post) => {
+          const roleBadge = getPostRoleBadge(post);
+          const reactionTotal = getPostReactionTotal(post);
+          const authorName = post.author.display_name ?? "משתמש";
+          const avatarSeed = post.author.avatar_url ?? post.author.id;
+
+          return (
+            <article
+              key={post.id}
+              className="bg-card/80 backdrop-blur-sm rounded-2xl card-shadow border border-border/50 overflow-hidden"
+            >
+              {post.is_pinned && (
+                <div className="px-4 py-1.5 bg-accent/60 flex items-center gap-1.5 text-xs text-accent-foreground font-medium">
+                  <Pin className="h-3 w-3" /> פוסט נעוץ
                 </div>
-                <p className="mt-2 text-sm leading-relaxed whitespace-pre-line">{post.content}</p>
-                {post.image && (
-                  <img src={post.image} alt="תמונה מצורפת" className="mt-3 w-full max-h-80 object-cover rounded-xl border border-border/30" />
-                )}
+              )}
+              <div className="p-4">
+                <div className="flex items-start gap-3">
+                  <Avatar className="h-10 w-10">
+                    <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${avatarSeed}`} />
+                    <AvatarFallback>{authorName[0]}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-bold text-sm">{authorName}</span>
+                      {roleBadge && (
+                        <Badge className="text-[10px] h-5 gradient-primary border-0 font-bold">{roleBadge}</Badge>
+                      )}
+                      <span className="text-xs text-muted-foreground">· {formatRelativeTime(post.created_at)}</span>
+                    </div>
+                    <p className="mt-2 text-sm leading-relaxed whitespace-pre-line">{post.content}</p>
+                    {post.images && post.images.length > 0 && (
+                      <div className="mt-3 space-y-2">
+                        {post.images.map((img, idx) => (
+                          <img key={idx} src={img} alt="תמונה מצורפת" className="w-full max-h-80 object-cover rounded-xl border border-border/30" />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <button className="p-1.5 rounded-xl hover:bg-secondary transition-colors">
+                    <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
+                  </button>
+                </div>
+                <div className="flex items-center gap-1 mt-4 pt-3 border-t">
+                  <button className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors px-3 py-1.5 rounded-xl hover:bg-accent">
+                    <Heart className="h-4 w-4" /> {reactionTotal}
+                  </button>
+                  <button className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors px-3 py-1.5 rounded-xl hover:bg-accent">
+                    <MessageCircle className="h-4 w-4" /> {post.commentCount}
+                  </button>
+                  <button className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors px-3 py-1.5 rounded-xl hover:bg-accent">
+                    <Share2 className="h-4 w-4" /> שיתוף
+                  </button>
+                  <button className="mr-auto flex items-center text-muted-foreground hover:text-primary transition-colors p-1.5 rounded-xl hover:bg-accent">
+                    <Bookmark className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
-              <button className="p-1.5 rounded-xl hover:bg-secondary transition-colors">
-                <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
-              </button>
-            </div>
-            <div className="flex items-center gap-1 mt-4 pt-3 border-t">
-              <button className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors px-3 py-1.5 rounded-xl hover:bg-accent">
-                <Heart className="h-4 w-4" /> {post.likes}
-              </button>
-              <button className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors px-3 py-1.5 rounded-xl hover:bg-accent">
-                <MessageCircle className="h-4 w-4" /> {post.comments}
-              </button>
-              <button className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors px-3 py-1.5 rounded-xl hover:bg-accent">
-                <Share2 className="h-4 w-4" /> שיתוף
-              </button>
-              <button className="mr-auto flex items-center text-muted-foreground hover:text-primary transition-colors p-1.5 rounded-xl hover:bg-accent">
-                <Bookmark className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-        </article>
-      ))}
+            </article>
+          );
+        })
+      )}
+
+      {/* Load more */}
+      {hasNextPage && (
+        <div className="flex justify-center py-4">
+          <Button
+            variant="outline"
+            size="sm"
+            className="rounded-full text-xs"
+            onClick={() => fetchNextPage()}
+            disabled={isFetchingNextPage}
+          >
+            {isFetchingNextPage ? (
+              <><Loader2 className="h-3.5 w-3.5 animate-spin me-1.5" /> טוען...</>
+            ) : (
+              "טען עוד פוסטים"
+            )}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

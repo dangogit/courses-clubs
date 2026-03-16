@@ -2,12 +2,15 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Users, Lock, Globe, Bell, BellOff, MessageCircle, Search, Filter } from "lucide-react";
+import { Users, Lock, Globe, Bell, BellOff, Search, Filter, Loader2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { groups as initialGroups } from "@/data/groups";
+import { useGroups } from "@/hooks/useGroups";
+import { useJoinGroup } from "@/hooks/useJoinGroup";
+import { useLeaveGroup } from "@/hooks/useLeaveGroup";
+import { toast } from "sonner";
 
 const sortOptions = [
   { id: "popular", label: "פופולריים" },
@@ -16,26 +19,59 @@ const sortOptions = [
 ];
 
 export default function Groups() {
-  const [joined, setJoined] = useState<Record<string, boolean>>({});
+  const { data: groups, isLoading, isError } = useGroups();
+  const joinGroup = useJoinGroup();
+  const leaveGroup = useLeaveGroup();
+
+  const [joinedIds, setJoinedIds] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
   const [activeSort, setActiveSort] = useState("popular");
   const [filterType, setFilterType] = useState<"all" | "public" | "private">("all");
 
   const toggleJoin = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation(); e.preventDefault();
-    setJoined((prev) => ({ ...prev, [id]: !prev[id] }));
+    e.stopPropagation();
+    e.preventDefault();
+
+    if (joinedIds.has(id)) {
+      setJoinedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+      leaveGroup.mutate(id, {
+        onError: () => {
+          // Roll back optimistic update
+          setJoinedIds((prev) => new Set(prev).add(id));
+          toast.error("שגיאה", { description: "לא הצלחנו לעזוב את הקבוצה. נסו שוב." });
+        },
+      });
+    } else {
+      setJoinedIds((prev) => new Set(prev).add(id));
+      joinGroup.mutate(id, {
+        onError: () => {
+          // Roll back optimistic update
+          setJoinedIds((prev) => {
+            const next = new Set(prev);
+            next.delete(id);
+            return next;
+          });
+          toast.error("שגיאה", { description: "לא הצלחנו להצטרף לקבוצה. נסו שוב." });
+        },
+      });
+    }
   };
 
-  const filtered = initialGroups
+  const filtered = (groups ?? [])
     .filter((g) => {
-      if (search && !g.name.includes(search) && !g.description.includes(search)) return false;
-      if (filterType === "public" && g.type !== "public") return false;
-      if (filterType === "private" && g.type !== "private") return false;
+      if (search && !g.name.includes(search) && !(g.description ?? "").includes(search)) return false;
+      if (filterType === "public" && g.is_private) return false;
+      if (filterType === "private" && !g.is_private) return false;
       return true;
     })
     .sort((a, b) => {
-      if (activeSort === "popular") return b.members - a.members;
-      if (activeSort === "active") return b.posts - a.posts;
+      if (activeSort === "popular") return b.memberCount - a.memberCount;
+      if (activeSort === "active") return b.memberCount - a.memberCount;
+      if (activeSort === "newest") return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       return 0;
     });
 
@@ -104,15 +140,26 @@ export default function Groups() {
         </Badge>
       </div>
 
-      {filtered.length === 0 ? (
+      {isLoading ? (
+        <div className="flex justify-center py-16">
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        </div>
+      ) : isError ? (
+        <div className="text-center py-16 bg-card/40 rounded-2xl border border-border/40">
+          <Users className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
+          <p className="font-semibold text-muted-foreground">שגיאה בטעינת הקבוצות</p>
+          <p className="text-xs text-muted-foreground mt-1">נסו לרענן את הדף</p>
+        </div>
+      ) : filtered.length === 0 ? (
         <div className="text-center py-16 bg-card/40 rounded-2xl border border-border/40">
           <Users className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
           <p className="font-semibold text-muted-foreground">לא נמצאו קבוצות</p>
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
-          {filtered.map((g, i) => {
-            const isMember = joined[g.id];
+          {filtered.map((g) => {
+            const isMember = joinedIds.has(g.id);
+            const coverImage = g.banner_url ?? g.thumbnail_url ?? "/assets/groups/default.jpg";
             return (
               <Link
                 key={g.id}
@@ -121,14 +168,14 @@ export default function Groups() {
               >
                 <div className="relative h-36 overflow-hidden">
                   <img
-                    src={g.cover}
+                    src={coverImage}
                     alt={g.name}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     loading="lazy"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
                   <Badge variant="secondary" className="absolute top-3 left-3 bg-background/80 backdrop-blur-sm text-foreground text-[10px]">
-                    {g.type === "private" ? <><Lock className="h-3 w-3 ml-1" /> פרטית</> : <><Globe className="h-3 w-3 ml-1" /> ציבורית</>}
+                    {g.is_private ? <><Lock className="h-3 w-3 ml-1" /> פרטית</> : <><Globe className="h-3 w-3 ml-1" /> ציבורית</>}
                   </Badge>
                 </div>
                 <div className="p-4">
@@ -136,8 +183,7 @@ export default function Groups() {
                   <p className="text-xs text-muted-foreground mb-4 leading-relaxed line-clamp-2">{g.description}</p>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" /> {g.members} חברים</span>
-                      <span className="flex items-center gap-1"><MessageCircle className="h-3.5 w-3.5" /> {g.posts} פוסטים</span>
+                      <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" /> {g.memberCount} חברים</span>
                     </div>
                     <Button size="sm" variant={isMember ? "outline" : "default"} className={`rounded-full text-xs h-8 px-4 ${isMember ? "" : "gradient-primary shadow-md"}`} onClick={(e) => toggleJoin(g.id, e)}>
                       {isMember ? <><BellOff className="h-3.5 w-3.5 ml-1" /> עוזב/ת</> : <><Bell className="h-3.5 w-3.5 ml-1" /> הצטרפות</>}
@@ -152,7 +198,9 @@ export default function Groups() {
                         </Avatar>
                       ))}
                     </div>
-                    <span className="text-[11px] text-muted-foreground">ו-{g.members - 4} חברים נוספים</span>
+                    <span className="text-[11px] text-muted-foreground">
+                      {g.memberCount > 4 ? `ו-${g.memberCount - 4} חברים נוספים` : `${g.memberCount} חברים`}
+                    </span>
                   </div>
                 </div>
               </Link>

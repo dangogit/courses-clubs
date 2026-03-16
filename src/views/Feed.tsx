@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Image,
@@ -8,13 +8,10 @@ import {
   BarChart3,
   TrendingUp,
   Clock,
-  Sparkles,
   Bookmark,
   HelpCircle,
   Trophy,
-  Megaphone,
-  Code2,
-  Share2,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import WelcomeBanner from "@/components/WelcomeBanner";
@@ -23,105 +20,43 @@ import CreatePostDialog from "@/components/CreatePostDialog";
 import PostCard, { type PostData } from "@/components/PostCard";
 import { Badge } from "@/components/ui/badge";
 import LeftSidebar from "@/components/LeftSidebar";
+import { useFeed, type FeedPost } from "@/hooks/useFeed";
+import { useFeedRealtime } from "@/hooks/useFeedRealtime";
+import { createClient } from "@/lib/supabase/client";
+import { formatRelativeTime } from "@/lib/formatRelativeTime";
 
-const brainersCharacter = "/assets/brainers-character.jpeg";
-const brainersLogo = "/assets/brainers-hero-logo.png";
-const monthlySchedule = "/assets/monthly-schedule.jpeg";
+// ─── Role label mapping ──────────────────────────────────────────────────────
 
-// ─── Posts data ───────────────────────────────────────────────────────────────
+function roleLabel(role: string | null): string | null {
+  if (role === "admin") return "מנהל";
+  if (role === "moderator") return "מנחה";
+  return null;
+}
 
-const posts: PostData[] = [
-  {
-    id: 1,
-    author: "לי ברקוביץ",
-    avatar: "iti",
-    role: "מנהל",
-    time: "לפני יום",
-    pinned: true,
-    postType: "announcement",
-    content:
-      "חברים וחברות יקרים שלום לכל המצטרפים החדשים והחדשות! 🎉\nאני חייב לשתף אתכם באופן אישי שזה סופר מרגש אותי לראות משהו שעבדתי עליו כל כך הרבה זמן קורם עור וגידים והופך למציאות.\nבימים הקרובים יהיו פה מספר עדכונים חשובים לגבי המועדון + וידאו הסבר איך להשתמש בפלטפורמה.",
-    likes: 42,
-    comments: 12,
-    aiSummary: "הפלטפורמה הושקה. בקרוב יגיעו עדכוני מוצר וסרטון הסבר. מייסד מתרגש ומודה לחברים.",
-    tags: ["עדכון", "קהילה", "פלטפורמה"],
-    reactions: { love: 28, clap: 12, fire: 8 },
-    images: [brainersCharacter, brainersLogo, monthlySchedule],
-  },
-  {
-    id: 2,
-    author: "שרי רוזנוסר",
-    avatar: "sari",
-    role: null,
-    time: "לפני 3 שעות",
-    pinned: false,
-    postType: "achievement",
-    content:
-      "סיימתי עכשיו את הקורס של Prompt Engineering — פשוט מדהים! למדתי כל כך הרבה טכניקות שלא הכרתי. ממליצה בחום לכולם 🙌",
-    likes: 18,
-    comments: 5,
-    aiSummary: "שרי השלימה קורס Prompt Engineering ומדרגת אותו גבוה. ממליצה לשאר החברים.",
-    tags: ["Prompt Engineering", "קורסים"],
-    reactions: { clap: 14, love: 8, fire: 5 },
-  },
-  {
-    id: 3,
-    author: "דוד לוי",
-    avatar: "david",
-    role: null,
-    time: "לפני 5 שעות",
-    pinned: false,
-    postType: "question",
-    content:
-      "מישהו מכיר ויש לו ניסיון עם אינטגרציה של צ׳אטבוטים עם Sendpulse?\nמחפש שיטות עבודה מומלצות וטיפים.\nכל עזרה תתקבל בברכה!",
-    likes: 7,
-    comments: 8,
-    aiSummary: "שאלה טכנית על חיבור צ׳אטבוט ל-Sendpulse. מחפש best practices ממי שעשה זאת.",
-    tags: ["Sendpulse", "אינטגרציה", "צ׳אטבוטים"],
-    reactions: { idea: 5, question: 4 },
-  },
-  {
-    id: 4,
-    author: "מאיה רוזן",
-    avatar: "maya",
-    role: "מנחה",
-    time: "לפני יום",
-    pinned: false,
-    postType: "share",
-    content:
-      "תזכורת: אל תשכחו לעדכן את תמונת הפרופיל שלכם ולכתוב Intro קצר! זה עוזר לקהילה להכיר אתכם יותר טוב 😊",
-    likes: 31,
-    comments: 3,
-    tags: ["טיפ", "קהילה"],
-    reactions: { clap: 22, love: 10, fire: 4 },
-  },
-];
+// ─── Map FeedPost → PostData for PostCard ─────────────────────────────────────
 
-// ─── Trending topics (derived from post tags) ────────────────────────────────
-
-function deriveTrendingTopics(postList: PostData[]) {
-  const tagCounts: Record<string, number> = {};
-  postList.forEach((p) => {
-    p.tags?.forEach((tag) => {
-      tagCounts[tag] = (tagCounts[tag] || 0) + 1;
-    });
-  });
-  return Object.entries(tagCounts)
-    .sort(([, a], [, b]) => b - a)
-    .slice(0, 8)
-    .map(([tag, count]) => ({ label: tag, count, hot: count >= 3 }));
+function feedPostToPostData(fp: FeedPost): PostData {
+  const totalReactions = Object.values(fp.reactionCounts).reduce((s, v) => s + v, 0);
+  return {
+    id: fp.id,
+    authorId: fp.author.id,
+    author: fp.author.display_name ?? "משתמש",
+    avatar: fp.author.avatar_url ?? fp.author.id,
+    role: roleLabel(fp.author.role),
+    time: formatRelativeTime(fp.created_at),
+    pinned: fp.is_pinned,
+    content: fp.content,
+    likes: totalReactions,
+    comments: fp.commentCount,
+    postType: fp.post_type as PostData["postType"],
+    reactions: fp.reactionCounts,
+    userReactions: fp.userReactions,
+    images: fp.images ?? [],
+    groupId: fp.group_id,
+  };
 }
 
 // ─── Post type filters ────────────────────────────────────────────────────────
-
-const postTypeFilters = [
-  { id: "all", label: "הכל", icon: null },
-  { id: "question", label: "שאלות", icon: HelpCircle },
-  { id: "achievement", label: "הישגים", icon: Trophy },
-  { id: "project", label: "פרויקטים", icon: Code2 },
-  { id: "announcement", label: "הודעות", icon: Megaphone },
-  { id: "share", label: "שיתופים", icon: Share2 },
-];
 
 const sortOptions = [
   { id: "new", label: "חדשים", icon: Clock },
@@ -135,10 +70,22 @@ export default function Feed() {
   const [createPostOpen, setCreatePostOpen] = useState(false);
   const [activeSort, setActiveSort] = useState("new");
   const [activePostType, setActivePostType] = useState("all");
-  const [activeTag, setActiveTag] = useState<string | null>(null);
-  const [savedPostIds, setSavedPostIds] = useState<Set<number>>(new Set());
+  const [savedPostIds, setSavedPostIds] = useState<Set<string>>(new Set());
+  const [currentUserId, setCurrentUserId] = useState<string | undefined>();
 
-  const toggleSavePost = (postId: number) => {
+  // Fetch current user for ownership checks
+  useEffect(() => {
+    const supabase = createClient();
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) setCurrentUserId(user.id);
+    });
+  }, []);
+
+  // Real-time Supabase feed for main feed (group_id = null)
+  const { data, isLoading, isError, fetchNextPage, hasNextPage, isFetchingNextPage } = useFeed(null);
+  useFeedRealtime(null);
+
+  const toggleSavePost = (postId: string) => {
     setSavedPostIds((prev) => {
       const next = new Set(prev);
       if (next.has(postId)) next.delete(postId);
@@ -147,18 +94,19 @@ export default function Feed() {
     });
   };
 
-  const trendingTopics = deriveTrendingTopics(posts);
+  // Flatten all pages into a single post list
+  const allPosts: PostData[] = data?.pages.flatMap((page) =>
+    page.posts.map(feedPostToPostData)
+  ) ?? [];
 
-  const filteredPosts = posts.filter((p) => {
+  const filteredPosts = allPosts.filter((p) => {
     if (activeSort === "saved" && !savedPostIds.has(p.id)) return false;
     if (activePostType !== "all" && p.postType !== activePostType) return false;
-    if (activeTag && !(p.tags ?? []).includes(activeTag)) return false;
     return true;
   });
 
   return (
     <div className="flex gap-5 w-full max-w-6xl mx-auto">
-
 
       {/* Main content fills remaining space */}
       <div className="flex-1 min-w-0 space-y-4">
@@ -229,30 +177,68 @@ export default function Feed() {
           </div>
         </div>
 
+        {/* Loading state */}
+        {isLoading && (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          </div>
+        )}
+
+        {/* Error state */}
+        {isError && (
+          <div className="text-center py-12 bg-card/40 rounded-2xl border border-destructive/40">
+            <p className="text-muted-foreground text-sm">שגיאה בטעינת הפוסטים</p>
+          </div>
+        )}
+
         {/* Posts */}
-        {filteredPosts.length === 0 ? (
+        {!isLoading && !isError && filteredPosts.length === 0 ? (
           <div className="text-center py-12 bg-card/40 rounded-2xl border border-border/40">
             <Bookmark className="h-8 w-8 text-muted-foreground/40 mx-auto mb-2" />
             <p className="text-muted-foreground text-sm">
-              {activeSort === "saved" ? "עדיין לא שמרת פוסטים" : "אין פוסטים בקטגוריה זו עדיין"}
+              {activeSort === "saved" ? "עדיין לא שמרת פוסטים" : "אין פוסטים עדיין"}
             </p>
-            <button
-              onClick={() => { setActiveSort("new"); setActivePostType("all"); }}
-              className="mt-2 text-xs text-primary font-semibold hover:underline cursor-pointer"
-            >
-              הצג הכל
-            </button>
+            {activeSort !== "new" && (
+              <button
+                onClick={() => { setActiveSort("new"); setActivePostType("all"); }}
+                className="mt-2 text-xs text-primary font-semibold hover:underline cursor-pointer"
+              >
+                הצג הכל
+              </button>
+            )}
           </div>
         ) : (
-          filteredPosts.map((post, index) => (
-            <PostCard
-              key={post.id}
-              post={post}
-              index={index}
-              isSaved={savedPostIds.has(post.id)}
-              onToggleSave={() => toggleSavePost(post.id)}
-            />
-          ))
+          <>
+            {filteredPosts.map((post, index) => (
+              <PostCard
+                key={post.id}
+                post={post}
+                index={index}
+                isSaved={savedPostIds.has(post.id)}
+                onToggleSave={() => toggleSavePost(post.id)}
+                currentUserId={currentUserId}
+              />
+            ))}
+
+            {/* Load more */}
+            {hasNextPage && (
+              <div className="flex justify-center py-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full"
+                  onClick={() => fetchNextPage()}
+                  disabled={isFetchingNextPage}
+                >
+                  {isFetchingNextPage ? (
+                    <><Loader2 className="h-4 w-4 animate-spin ml-2" /> טוען...</>
+                  ) : (
+                    "טען עוד"
+                  )}
+                </Button>
+              </div>
+            )}
+          </>
         )}
       </div>
 
