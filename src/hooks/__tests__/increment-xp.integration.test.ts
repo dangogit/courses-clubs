@@ -18,6 +18,8 @@ const supabase = createClient<Database>(SUPABASE_URL, SERVICE_ROLE_KEY, {
 });
 
 let testUserId: string;
+let testCourseId: string;
+let testLessonId: string;
 
 beforeAll(async () => {
   // Create a test user via admin API
@@ -38,9 +40,30 @@ beforeAll(async () => {
 
   expect(profile?.xp_total).toBe(0);
   expect(profile?.level_id).toBe(1);
+
+  // Create a test course + lesson for dedup tests (FK on lesson_progress)
+  const { data: course, error: courseErr } = await supabase
+    .from("courses")
+    .insert({ title: "XP Test Course", description: "test", order_index: 999 })
+    .select("id")
+    .single();
+  if (courseErr) throw new Error(`Failed to create test course: ${courseErr.message}`);
+  testCourseId = course.id;
+
+  const { data: lesson, error: lessonErr } = await supabase
+    .from("lessons")
+    .insert({ course_id: testCourseId, title: "XP Test Lesson", order_index: 0 })
+    .select("id")
+    .single();
+  if (lessonErr) throw new Error(`Failed to create test lesson: ${lessonErr.message}`);
+  testLessonId = lesson.id;
 });
 
 afterAll(async () => {
+  // Clean up test course (cascades to lessons, lesson_progress)
+  if (testCourseId) {
+    await supabase.from("courses").delete().eq("id", testCourseId);
+  }
   // Clean up test user (cascades to profiles and xp_events)
   if (testUserId) {
     await supabase.auth.admin.deleteUser(testUserId);
@@ -139,5 +162,61 @@ describe("increment_xp RPC", () => {
       new_level_id: 3,
       leveled_up: false,
     });
+  });
+
+  it("rejects negative XP amounts", async () => {
+    const { error } = await supabase.rpc("increment_xp", {
+      p_user_id: testUserId,
+      p_amount: -10,
+      p_reason: "exploit_attempt",
+    });
+
+    expect(error).not.toBeNull();
+    expect(error!.message).toContain("p_amount must be positive");
+  });
+
+  it("rejects zero XP amount", async () => {
+    const { error } = await supabase.rpc("increment_xp", {
+      p_user_id: testUserId,
+      p_amount: 0,
+      p_reason: "zero_test",
+    });
+
+    expect(error).not.toBeNull();
+  });
+
+  it("does not double-award XP on lesson toggle-off/toggle-on", async () => {
+    // Record XP before the test
+    const { data: before } = await supabase
+      .from("profiles")
+      .select("xp_total")
+      .eq("id", testUserId)
+      .single();
+
+    // First completion → trigger awards +50 XP
+    await supabase
+      .from("lesson_progress")
+      .insert({ user_id: testUserId, lesson_id: testLessonId });
+
+    // Toggle off (unmark lesson)
+    await supabase
+      .from("lesson_progress")
+      .delete()
+      .eq("user_id", testUserId)
+      .eq("lesson_id", testLessonId);
+
+    // Toggle back on → trigger should NOT award XP again (dedup)
+    await supabase
+      .from("lesson_progress")
+      .insert({ user_id: testUserId, lesson_id: testLessonId });
+
+    const { data: after } = await supabase
+      .from("profiles")
+      .select("xp_total")
+      .eq("id", testUserId)
+      .single();
+
+    // Should have gained exactly 50 XP (one award), not 100
+    expect(after!.xp_total - before!.xp_total).toBe(50);
   });
 });

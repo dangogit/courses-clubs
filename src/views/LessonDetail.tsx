@@ -56,8 +56,13 @@ export default function LessonDetail() {
 
   // Level-up detection: compare previous levelId with current
   const prevLevelIdRef = useRef(xp?.levelId);
+  const xpLevelId = xp?.levelId;
+  const xpLevelName = xp?.level.name;
+  const xpLevelIcon = xp?.level.icon;
+  const xpTotal = xp?.xpTotal;
+
   useEffect(() => {
-    if (xp && prevLevelIdRef.current !== undefined && xp.levelId > prevLevelIdRef.current) {
+    if (xpLevelId !== undefined && prevLevelIdRef.current !== undefined && xpLevelId > prevLevelIdRef.current) {
       // Level up! Big celebration
       const burst = () => confetti({
         particleCount: 150,
@@ -69,13 +74,13 @@ export default function LessonDetail() {
       setTimeout(burst, 300);
       setTimeout(burst, 600);
 
-      toast.success(`${xp.level.icon} עלית לרמה: ${xp.level.name}!`, {
-        description: `יש לך ${xp.xpTotal} נקודות XP`,
+      toast.success(`${xpLevelIcon} עלית לרמה: ${xpLevelName}!`, {
+        description: `יש לך ${xpTotal} נקודות XP`,
         duration: 5000,
       });
     }
-    prevLevelIdRef.current = xp?.levelId;
-  }, [xp]);
+    prevLevelIdRef.current = xpLevelId;
+  }, [xpLevelId, xpLevelName, xpLevelIcon, xpTotal]);
 
   const handleToggleWatched = useCallback(() => {
     if (!lesson) return;
