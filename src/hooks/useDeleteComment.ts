@@ -8,10 +8,14 @@ export function useDeleteComment() {
   return useMutation({
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     mutationFn: async ({ id, postId: _postId }: { id: string; postId: string }) => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
       const { error } = await supabase
         .from("post_comments")
         .delete()
-        .eq("id", id);
+        .eq("id", id)
+        .eq("user_id", user.id);
 
       if (error) throw error;
     },
