@@ -80,6 +80,7 @@ export default function EventDetailPage() {
   const typeCls = typeStyles[event.event_type ?? ""] || "";
   const dateStr = getDateStr(event.starts_at);
   const timeStr = getTimeStr(event.starts_at);
+  const isFull = event.max_attendees !== null && event.rsvpCount >= event.max_attendees;
 
   const addComment = () => {
     if (!newComment.trim()) return;
@@ -171,6 +172,9 @@ export default function EventDetailPage() {
           <div className="flex items-center gap-1.5 text-sm">
             <Users className="h-3.5 w-3.5 text-muted-foreground" />
             <span className="font-bold">{event.rsvpCount}</span>
+            {event.max_attendees !== null && (
+              <span className="text-muted-foreground text-xs">/ {event.max_attendees}</span>
+            )}
             <span className="text-muted-foreground text-xs">נרשמו</span>
           </div>
 
@@ -178,11 +182,22 @@ export default function EventDetailPage() {
 
           <Button
             size="sm"
-            className={`min-w-[130px] rounded-xl gap-1.5 text-xs font-bold ${event.isRsvped ? "bg-emerald-600 hover:bg-emerald-700" : "gradient-primary hover:opacity-90"}`}
+            className={`min-w-[130px] rounded-xl gap-1.5 text-xs font-bold ${
+              isFull && !event.isRsvped
+                ? "bg-muted text-muted-foreground cursor-not-allowed"
+                : event.isRsvped
+                  ? "bg-emerald-600 hover:bg-emerald-700"
+                  : "gradient-primary hover:opacity-90"
+            }`}
             onClick={() => toggleRsvp()}
-            disabled={isToggling}
+            disabled={isToggling || (isFull && !event.isRsvped)}
           >
-            {event.isRsvped ? <><Check className="h-3.5 w-3.5" /> נרשמת!</> : <><Sparkles className="h-3.5 w-3.5" /> הרשמה לאירוע</>}
+            {isFull && !event.isRsvped
+              ? "האירוע מלא"
+              : event.isRsvped
+                ? <><Check className="h-3.5 w-3.5" /> נרשמת!</>
+                : <><Sparkles className="h-3.5 w-3.5" /> הרשמה לאירוע</>
+            }
           </Button>
 
           <Button
