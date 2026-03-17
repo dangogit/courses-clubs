@@ -10,7 +10,11 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import ProgressBanner from "@/components/ProgressBanner";
+import { TierBadge } from "@/components/TierBadge";
+import { LockOverlay } from "@/components/LockOverlay";
 import { useCourses } from "@/hooks/useCourses";
+import { useUserTier } from "@/hooks/useUserTier";
+import { canAccess } from "@/lib/tiers";
 import { motion } from "framer-motion";
 
 const courseIcons = [Brain, Sparkles, Bot, Megaphone, Zap, BarChart3, Code2];
@@ -61,6 +65,7 @@ function CoursesLoadingSkeleton() {
 export default function Courses() {
   const router = useRouter();
   const { data: courses = [], isLoading, error } = useCourses();
+  const { data: userTier = 0 } = useUserTier();
   const [activeFilter, setActiveFilter] = useState("הכל");
 
   const filteredCourses = courses.filter((c) => {
@@ -209,6 +214,13 @@ export default function Courses() {
                     </div>
                   )}
 
+                  {/* Tier badge — only show when not completed (completed badge takes that spot) */}
+                  {!isCompleted && c.min_tier_level > 0 && (
+                    <div className="absolute top-3 end-3">
+                      <TierBadge tierLevel={c.min_tier_level} />
+                    </div>
+                  )}
+
                   {/* Progress bar at bottom of thumbnail */}
                   {isInProgress && (
                     <div className="absolute bottom-0 inset-x-0 h-1.5 bg-black/20">
@@ -225,6 +237,9 @@ export default function Courses() {
                       <Play className="h-5 w-5 text-white fill-white" />
                     </div>
                   </div>
+
+                  {/* Lock overlay for tier-gated content */}
+                  <LockOverlay requiredTierLevel={c.min_tier_level} userTierLevel={userTier} />
                 </div>
 
                 {/* Completed accent line */}
@@ -251,8 +266,9 @@ export default function Courses() {
                     </span>
 
                     {/* CTA link — push to the end */}
-                    <span className="mr-auto flex items-center gap-1 text-primary font-semibold group-hover:gap-1.5 transition-all">
-                      {isCompleted ? "עבור שוב" : isInProgress ? "המשך" : "התחל"}
+                    <span className="ms-auto flex items-center gap-1 text-primary font-semibold group-hover:gap-1.5 transition-all">
+                      {!canAccess(userTier, c.min_tier_level) ? "שדרגו" :
+                       isCompleted ? "עבור שוב" : isInProgress ? "המשך" : "התחל"}
                       <ChevronLeft className="h-3 w-3" />
                     </span>
                   </div>

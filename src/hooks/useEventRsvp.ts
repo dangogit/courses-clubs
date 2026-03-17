@@ -2,6 +2,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import type { EventDetail } from "@/hooks/useEvents";
+import { TierAccessError } from "@/lib/errors";
+import { TIER_META } from "@/lib/tiers";
 
 export function useEventRsvp(eventId: string) {
   const supabase = createClient();
@@ -23,6 +25,19 @@ export function useEventRsvp(eventId: string) {
           .eq("user_id", user.id);
         if (error) throw error;
       } else {
+        // Pre-flight tier check before INSERT
+        const [{ data: profile }, { data: event }] = await Promise.all([
+          supabase.from("profiles").select("tier_level").eq("id", user.id).single(),
+          supabase.from("events").select("min_tier_level").eq("id", eventId).single(),
+        ]);
+
+        if (!profile) throw new Error("Could not fetch profile");
+        if (!event) throw new Error("Event not found");
+
+        if (profile.tier_level < event.min_tier_level) {
+          throw new TierAccessError(event.min_tier_level);
+        }
+
         // Add RSVP
         const { error } = await supabase
           .from("event_rsvps")
@@ -55,11 +70,19 @@ export function useEventRsvp(eventId: string) {
       return { previous };
     },
 
-    onError: (_err, _vars, context) => {
+    onError: (err, _vars, context) => {
       if (context?.previous) {
         queryClient.setQueryData(["events", eventId], context.previous);
       }
-      toast.error("שגיאה", { description: "לא ניתן להירשם לאירוע. נסה שוב." });
+
+      if (err instanceof TierAccessError) {
+        const tierName = TIER_META[err.requiredTierLevel]?.name ?? "גבוה יותר";
+        toast.error("נדרש שדרוג", {
+          description: `האירוע דורש מנוי ${tierName}. שדרגו כדי להירשם.`,
+        });
+      } else {
+        toast.error("שגיאה", { description: "לא ניתן להירשם לאירוע. נסו שוב." });
+      }
     },
 
     onSettled: () => {

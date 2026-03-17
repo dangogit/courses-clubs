@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TierBadge } from "@/components/TierBadge";
 import { initialRecordings } from "@/data/recordings";
 import { useAdmin } from "@/contexts/AdminContext";
 import { useEvents, type EventWithRsvpCount } from "@/hooks/useEvents";
@@ -241,6 +242,7 @@ function MonthCalendar({
                               <p className="font-bold text-sm leading-snug">{ev.title}</p>
                               <div className="flex items-center gap-2 mt-1 flex-wrap">
                                 <LiveBadge startsAt={ev.starts_at} />
+                                {ev.min_tier_level > 0 && <TierBadge tierLevel={ev.min_tier_level} size="sm" />}
                               </div>
                             </div>
                           </div>
@@ -602,6 +604,7 @@ export default function Events() {
                       <Sparkles className="h-2.5 w-2.5" /> האירוע הבא
                     </Badge>
                     <LiveBadge startsAt={nextEvent.starts_at} />
+                    {nextEvent.min_tier_level > 0 && <TierBadge tierLevel={nextEvent.min_tier_level} />}
                     {heroDaysUntil <= 3 && heroDaysUntil > 0 && (
                       <Badge className="bg-red-500/10 text-red-600 border-red-500/30 text-[10px]">
                         עוד {heroDaysUntil} ימים!
@@ -660,6 +663,7 @@ export default function Events() {
                         <Sparkles className="h-2.5 w-2.5" /> האירוע הבא
                       </Badge>
                       <LiveBadge startsAt={nextEvent.starts_at} size="sm" />
+                      {nextEvent.min_tier_level > 0 && <TierBadge tierLevel={nextEvent.min_tier_level} />}
                     </div>
                     <h3 className="font-extrabold text-[14px] group-hover:text-primary transition-colors leading-snug">{nextEvent.title}</h3>
                     <div className="flex items-center gap-3 mt-1.5 text-[11px] text-muted-foreground flex-wrap">
@@ -743,6 +747,7 @@ export default function Events() {
                         </Badge>
                       )}
                       <LiveBadge startsAt={e.starts_at} />
+                      {e.min_tier_level > 0 && <TierBadge tierLevel={e.min_tier_level} />}
                     </div>
                     <h3 className="font-bold text-sm group-hover:text-primary transition-colors leading-snug">{e.title}</h3>
                     <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{e.description}</p>
@@ -797,6 +802,7 @@ export default function Events() {
                           </Badge>
                         )}
                         <LiveBadge startsAt={e.starts_at} size="sm" />
+                        {e.min_tier_level > 0 && <TierBadge tierLevel={e.min_tier_level} />}
                         {daysUntil > 0 && daysUntil <= 7 && (
                           <span className="text-[9px] text-primary/70 font-bold">עוד {daysUntil} ימים</span>
                         )}

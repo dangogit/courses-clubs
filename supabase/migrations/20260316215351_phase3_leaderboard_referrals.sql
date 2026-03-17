@@ -255,7 +255,7 @@ SET search_path = ''
 AS $$
 BEGIN
   INSERT INTO public.invite_links (code, created_by)
-  VALUES (encode(gen_random_bytes(6), 'hex'), NEW.id);
+  VALUES (encode(extensions.gen_random_bytes(6), 'hex'), NEW.id);
   RETURN NEW;
 END;
 $$;

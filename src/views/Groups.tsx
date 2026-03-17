@@ -7,7 +7,11 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { TierBadge } from "@/components/TierBadge";
+import { LockOverlay } from "@/components/LockOverlay";
 import { useGroups } from "@/hooks/useGroups";
+import { useUserTier } from "@/hooks/useUserTier";
+import { canAccess } from "@/lib/tiers";
 import { useJoinGroup } from "@/hooks/useJoinGroup";
 import { useLeaveGroup } from "@/hooks/useLeaveGroup";
 import { useMyGroupIds } from "@/hooks/useMyGroupIds";
@@ -25,6 +29,7 @@ export default function Groups() {
   const leaveGroup = useLeaveGroup();
 
   const { data: myGroupIds } = useMyGroupIds();
+  const { data: userTier = 0 } = useUserTier();
   const [search, setSearch] = useState("");
   const [activeSort, setActiveSort] = useState("popular");
   const [filterType, setFilterType] = useState<"all" | "public" | "private">("all");
@@ -125,7 +130,7 @@ export default function Groups() {
             {opt.label}
           </button>
         ))}
-        <Badge variant="secondary" className="mr-auto text-[10px] h-5 rounded-full">
+        <Badge variant="secondary" className="ms-auto text-[10px] h-5 rounded-full">
           {filtered.length} קבוצות
         </Badge>
       </div>
@@ -164,9 +169,14 @@ export default function Groups() {
                     loading="lazy"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-                  <Badge variant="secondary" className="absolute top-3 left-3 bg-background/80 backdrop-blur-sm text-foreground text-[10px]">
-                    {g.is_private ? <><Lock className="h-3 w-3 ml-1" /> פרטית</> : <><Globe className="h-3 w-3 ml-1" /> ציבורית</>}
-                  </Badge>
+                  <div className="absolute top-3 start-3 flex items-center gap-1.5">
+                    <Badge variant="secondary" className="bg-background/80 backdrop-blur-sm text-foreground text-[10px]">
+                      {g.is_private ? <><Lock className="h-3 w-3 ms-1" /> פרטית</> : <><Globe className="h-3 w-3 ms-1" /> ציבורית</>}
+                    </Badge>
+                    {g.min_tier_level > 0 && <TierBadge tierLevel={g.min_tier_level} />}
+                  </div>
+                  {/* Lock overlay for tier-gated groups */}
+                  <LockOverlay requiredTierLevel={g.min_tier_level} userTierLevel={userTier} />
                 </div>
                 <div className="p-4">
                   <h3 className="text-lg font-bold group-hover:text-primary transition-colors">{g.name}</h3>
@@ -175,9 +185,15 @@ export default function Groups() {
                     <div className="flex items-center gap-3 text-xs text-muted-foreground">
                       <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" /> {g.memberCount} חברים</span>
                     </div>
-                    <Button size="sm" variant={isMember ? "outline" : "default"} className={`rounded-full text-xs h-8 px-4 ${isMember ? "" : "gradient-primary shadow-md"}`} disabled={isMutating} onClick={(e) => toggleJoin(g.id, e)}>
-                      {isMember ? <><BellOff className="h-3.5 w-3.5 ml-1" /> עוזב/ת</> : <><Bell className="h-3.5 w-3.5 ml-1" /> הצטרפות</>}
-                    </Button>
+                    {!canAccess(userTier, g.min_tier_level) ? (
+                      <Button size="sm" variant="outline" className="rounded-full text-xs h-8 px-4" disabled>
+                        <Lock className="h-3.5 w-3.5 ms-1" /> שדרגו
+                      </Button>
+                    ) : (
+                      <Button size="sm" variant={isMember ? "outline" : "default"} className={`rounded-full text-xs h-8 px-4 ${isMember ? "" : "gradient-primary shadow-md"}`} disabled={isMutating} onClick={(e) => toggleJoin(g.id, e)}>
+                        {isMember ? <><BellOff className="h-3.5 w-3.5 ms-1" /> עוזב/ת</> : <><Bell className="h-3.5 w-3.5 ms-1" /> הצטרפות</>}
+                      </Button>
+                    )}
                   </div>
                   <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border/40">
                     <div className="flex -space-x-2 space-x-reverse">
