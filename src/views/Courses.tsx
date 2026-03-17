@@ -266,7 +266,7 @@ export default function Courses() {
                     </span>
 
                     {/* CTA link — push to the end */}
-                    <span className="mr-auto flex items-center gap-1 text-primary font-semibold group-hover:gap-1.5 transition-all">
+                    <span className="ms-auto flex items-center gap-1 text-primary font-semibold group-hover:gap-1.5 transition-all">
                       {!canAccess(userTier, c.min_tier_level) ? "שדרגו" :
                        isCompleted ? "עבור שוב" : isInProgress ? "המשך" : "התחל"}
                       <ChevronLeft className="h-3 w-3" />

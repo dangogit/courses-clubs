@@ -28,4 +28,11 @@ describe("TierBadge", () => {
     const badge = screen.getByText("בסיסי");
     expect(badge.className).toContain("text-xs");
   });
+
+  it("falls back to TIER_META[PREMIUM] for unknown tier level", () => {
+    // TierBadge: TIER_META[99] ?? TIER_META[TIER_LEVELS.PREMIUM]
+    // TIER_META[99] is undefined, so falls back to Premium meta
+    render(<TierBadge tierLevel={99} />);
+    expect(screen.getByText("פרימיום")).toBeInTheDocument();
+  });
 });

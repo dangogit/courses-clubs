@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { createClient } from "@/lib/supabase/client";
+import { TIER_LEVELS } from "@/lib/tiers";
 
 export function useUserTier() {
   const supabase = createClient();
@@ -7,10 +8,9 @@ export function useUserTier() {
   return useQuery({
     queryKey: ["user-tier"],
     queryFn: async (): Promise<number> => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return 0;
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError) throw authError;
+      if (!user) return TIER_LEVELS.FREE;
 
       const { data, error } = await supabase
         .from("profiles")
@@ -18,8 +18,8 @@ export function useUserTier() {
         .eq("id", user.id)
         .single();
 
-      if (error || !data) return 0;
-      return data.tier_level;
+      if (error) throw error;
+      return data?.tier_level ?? TIER_LEVELS.FREE;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
   });

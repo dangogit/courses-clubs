@@ -21,7 +21,10 @@ export function useJoinGroup() {
         supabase.from("groups").select("min_tier_level").eq("id", groupId).single(),
       ]);
 
-      if (profile && group && profile.tier_level < group.min_tier_level) {
+      if (!profile) throw new Error("Could not fetch profile");
+      if (!group) throw new Error("Group not found");
+
+      if (profile.tier_level < group.min_tier_level) {
         throw new TierAccessError(group.min_tier_level);
       }
 

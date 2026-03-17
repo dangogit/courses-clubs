@@ -31,7 +31,10 @@ export function useEventRsvp(eventId: string) {
           supabase.from("events").select("min_tier_level").eq("id", eventId).single(),
         ]);
 
-        if (profile && event && profile.tier_level < event.min_tier_level) {
+        if (!profile) throw new Error("Could not fetch profile");
+        if (!event) throw new Error("Event not found");
+
+        if (profile.tier_level < event.min_tier_level) {
           throw new TierAccessError(event.min_tier_level);
         }
 

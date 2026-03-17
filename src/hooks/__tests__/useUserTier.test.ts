@@ -67,7 +67,7 @@ describe("useUserTier", () => {
     expect(result.current.data).toBe(2);
   });
 
-  it("returns 0 when profile query fails", async () => {
+  it("throws when profile query errors", async () => {
     mockGetUser.mockResolvedValue({
       data: { user: { id: "user-456" } },
     });
@@ -86,8 +86,8 @@ describe("useUserTier", () => {
       wrapper: createWrapper(),
     });
 
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(result.current.data).toBe(0);
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error).toEqual({ message: "Not found" });
   });
 
   it("returns 0 when profile data is null", async () => {
@@ -135,5 +135,47 @@ describe("useUserTier", () => {
     expect(mockFrom).toHaveBeenCalledWith("profiles");
     expect(mockSelect).toHaveBeenCalledWith("tier_level");
     expect(mockEq).toHaveBeenCalledWith("id", "user-abc");
+  });
+
+  it("returns 0 when tier_level is null in profile data", async () => {
+    mockGetUser.mockResolvedValue({
+      data: { user: { id: "user-null-tier" } },
+    });
+    mockFrom.mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({
+            data: { tier_level: null },
+            error: null,
+          }),
+        }),
+      }),
+    });
+
+    const { result } = renderHook(() => useUserTier(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    // data?.tier_level ?? TIER_LEVELS.FREE → null ?? 0 → 0
+    expect(result.current.data).toBe(0);
+  });
+
+  it("throws when getUser() rejects with auth error", async () => {
+    mockGetUser.mockResolvedValue({
+      data: { user: null },
+      error: { message: "Auth session expired", status: 401 },
+    });
+
+    const { result } = renderHook(() => useUserTier(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error).toEqual({
+      message: "Auth session expired",
+      status: 401,
+    });
+    expect(mockFrom).not.toHaveBeenCalled();
   });
 });

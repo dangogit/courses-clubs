@@ -738,6 +738,10 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_lesson_with_access: {
+        Args: { p_course_id: string; p_lesson_id: string }
+        Returns: Json
+      }
       get_top_inviters: {
         Args: { p_limit?: number }
         Returns: {

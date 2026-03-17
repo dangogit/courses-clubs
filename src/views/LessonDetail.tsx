@@ -148,7 +148,7 @@ export default function LessonDetail() {
             </Badge>
             {watched && (
               <Badge className="bg-emerald-500/15 text-emerald-600 border-emerald-500/30 text-[10px]">
-                <CheckCircle2 className="h-3 w-3 ml-1" /> נצפה
+                <CheckCircle2 className="h-3 w-3 ms-1" /> נצפה
               </Badge>
             )}
           </div>
@@ -204,7 +204,7 @@ export default function LessonDetail() {
               {watched ? "נצפה" : "סיימתי לצפות"}
             </button>
 
-            <div className="flex items-center gap-1 mr-auto">
+            <div className="flex items-center gap-1 ms-auto">
               <button
                 onClick={() => setBookmarked(!bookmarked)}
                 className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer ${
@@ -265,7 +265,7 @@ export default function LessonDetail() {
               {nextLesson && (
                 <button
                   onClick={() => router.push(`/courses/${id}/lesson/${nextLesson.id}`)}
-                  className="mr-2 text-primary hover:underline font-semibold cursor-pointer"
+                  className="me-2 text-primary hover:underline font-semibold cursor-pointer"
                 >
                   המשך לשיעור הבא →
                 </button>

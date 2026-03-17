@@ -1,6 +1,6 @@
 "use client";
 
-import { TIER_META } from "@/lib/tiers";
+import { TIER_META, TIER_LEVELS } from "@/lib/tiers";
 
 interface TierBadgeProps {
   tierLevel: number;
@@ -13,7 +13,7 @@ interface TierBadgeProps {
 export function TierBadge({ tierLevel, size = "sm", showFree = false, className = "" }: TierBadgeProps) {
   if (tierLevel === 0 && !showFree) return null;
 
-  const meta = TIER_META[tierLevel] ?? TIER_META[0];
+  const meta = TIER_META[tierLevel] ?? TIER_META[TIER_LEVELS.PREMIUM];
   const sizeClasses = size === "sm" ? "text-[10px] px-2 py-0.5" : "text-xs px-2.5 py-1";
 
   return (

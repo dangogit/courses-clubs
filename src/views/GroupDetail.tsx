@@ -118,7 +118,7 @@ export default function GroupDetail() {
           <div className="flex items-end justify-between">
             <div>
               <Badge variant="secondary" className="bg-background/80 backdrop-blur-sm text-foreground text-[10px] mb-2">
-                {group.is_private ? <><Lock className="h-3 w-3 ml-1" /> פרטית</> : <><Globe className="h-3 w-3 ml-1" /> ציבורית</>}
+                {group.is_private ? <><Lock className="h-3 w-3 ms-1" /> פרטית</> : <><Globe className="h-3 w-3 ms-1" /> ציבורית</>}
               </Badge>
               <div className="flex items-center gap-2 mb-1">
                 <h1 className="text-2xl font-bold text-white drop-shadow-lg">{group.name}</h1>
@@ -220,11 +220,11 @@ export default function GroupDetail() {
 
             {/* Image preview */}
             {previewImage && (
-              <div className="relative mr-[52px]">
+              <div className="relative me-[52px]">
                 <img src={previewImage} alt="תצוגה מקדימה" className="w-full max-h-64 object-cover rounded-xl border border-border/50" />
                 <button
                   onClick={() => setPreviewImage(null)}
-                  className="absolute top-2 left-2 p-1 rounded-full bg-foreground/60 text-background hover:bg-foreground/80 transition-colors"
+                  className="absolute top-2 start-2 p-1 rounded-full bg-foreground/60 text-background hover:bg-foreground/80 transition-colors"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -247,7 +247,7 @@ export default function GroupDetail() {
               }}
             />
 
-            <div className="flex items-center justify-between mr-[52px]">
+            <div className="flex items-center justify-between me-[52px]">
               <div className="flex items-center gap-1">
                 <Button variant="ghost" size="sm" className="text-muted-foreground gap-1.5 text-xs rounded-xl h-8" onClick={() => fileInputRef.current?.click()}>
                   <ImagePlus className="h-4 w-4 text-success" /> תמונה
@@ -345,7 +345,7 @@ export default function GroupDetail() {
                   <button className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary transition-colors px-3 py-1.5 rounded-xl hover:bg-accent">
                     <Share2 className="h-4 w-4" /> שיתוף
                   </button>
-                  <button className="mr-auto flex items-center text-muted-foreground hover:text-primary transition-colors p-1.5 rounded-xl hover:bg-accent">
+                  <button className="ms-auto flex items-center text-muted-foreground hover:text-primary transition-colors p-1.5 rounded-xl hover:bg-accent">
                     <Bookmark className="h-4 w-4" />
                   </button>
                 </div>

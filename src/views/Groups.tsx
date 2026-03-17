@@ -130,7 +130,7 @@ export default function Groups() {
             {opt.label}
           </button>
         ))}
-        <Badge variant="secondary" className="mr-auto text-[10px] h-5 rounded-full">
+        <Badge variant="secondary" className="ms-auto text-[10px] h-5 rounded-full">
           {filtered.length} קבוצות
         </Badge>
       </div>
@@ -169,9 +169,9 @@ export default function Groups() {
                     loading="lazy"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-                  <div className="absolute top-3 left-3 flex items-center gap-1.5">
+                  <div className="absolute top-3 start-3 flex items-center gap-1.5">
                     <Badge variant="secondary" className="bg-background/80 backdrop-blur-sm text-foreground text-[10px]">
-                      {g.is_private ? <><Lock className="h-3 w-3 ml-1" /> פרטית</> : <><Globe className="h-3 w-3 ml-1" /> ציבורית</>}
+                      {g.is_private ? <><Lock className="h-3 w-3 ms-1" /> פרטית</> : <><Globe className="h-3 w-3 ms-1" /> ציבורית</>}
                     </Badge>
                     {g.min_tier_level > 0 && <TierBadge tierLevel={g.min_tier_level} />}
                   </div>
@@ -187,11 +187,11 @@ export default function Groups() {
                     </div>
                     {!canAccess(userTier, g.min_tier_level) ? (
                       <Button size="sm" variant="outline" className="rounded-full text-xs h-8 px-4" disabled>
-                        <Lock className="h-3.5 w-3.5 ml-1" /> שדרגו
+                        <Lock className="h-3.5 w-3.5 ms-1" /> שדרגו
                       </Button>
                     ) : (
                       <Button size="sm" variant={isMember ? "outline" : "default"} className={`rounded-full text-xs h-8 px-4 ${isMember ? "" : "gradient-primary shadow-md"}`} disabled={isMutating} onClick={(e) => toggleJoin(g.id, e)}>
-                        {isMember ? <><BellOff className="h-3.5 w-3.5 ml-1" /> עוזב/ת</> : <><Bell className="h-3.5 w-3.5 ml-1" /> הצטרפות</>}
+                        {isMember ? <><BellOff className="h-3.5 w-3.5 ms-1" /> עוזב/ת</> : <><Bell className="h-3.5 w-3.5 ms-1" /> הצטרפות</>}
                       </Button>
                     )}
                   </div>

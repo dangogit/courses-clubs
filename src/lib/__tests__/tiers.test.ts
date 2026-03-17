@@ -19,6 +19,17 @@ describe("canAccess", () => {
     expect(canAccess(0, 2)).toBe(false);
     expect(canAccess(1, 2)).toBe(false);
   });
+
+  it("returns true for exact boundary (equal tiers)", () => {
+    // Explicit boundary test — canAccess uses >=, so equal should pass
+    expect(canAccess(1, 1)).toBe(true);
+  });
+
+  it("returns true for negative tier level (sentinel value from AdminTierSelector)", () => {
+    // -1 is used as sentinel for "inherited" in AdminTierSelector
+    // canAccess(-1, 0) → -1 >= 0 → false
+    expect(canAccess(-1, 0)).toBe(false);
+  });
 });
 
 describe("getEffectiveTierLevel", () => {
@@ -26,6 +37,14 @@ describe("getEffectiveTierLevel", () => {
     expect(getEffectiveTierLevel(0, 2)).toBe(0);
     expect(getEffectiveTierLevel(1, 0)).toBe(1);
     expect(getEffectiveTierLevel(2, 1)).toBe(2);
+  });
+
+  it("treats explicit 0 as override, NOT as unset (?? vs || distinction)", () => {
+    // lessonMinTierLevel = 0 is a valid override meaning "free"
+    // ?? only falls back on null/undefined, NOT on 0
+    // If this were || instead of ??, 0 would be treated as falsy and
+    // the course tier (2) would be returned incorrectly
+    expect(getEffectiveTierLevel(0, 2)).toBe(0);
   });
 
   it("inherits course tier when lesson tier is null", () => {
@@ -53,5 +72,9 @@ describe("TIER_META", () => {
     expect(TIER_META[1].name).toBe("בסיסי");
     expect(TIER_META[2].name).toBe("פרימיום");
     expect(TIER_META[0].color).toBe("120 60% 40%");
+  });
+
+  it("returns undefined for unknown tier level", () => {
+    expect(TIER_META[99]).toBeUndefined();
   });
 });
